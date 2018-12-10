@@ -23,7 +23,7 @@ let action_param =
 *)
 
 let deliver () =
-  let st = Git_ops.store_of_string "/Users/oliver/Desktop/t/gt/.git" in
+  let st = Git_ops.store_of_string "/Users/oliver/Google Drive/Cambridge/CST_II/project/testing/gt/.git" in
   Maildir.deliver_mail st In_channel.stdin
 
 let take_action action = match action with

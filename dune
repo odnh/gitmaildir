@@ -1,3 +1,3 @@
 (executable
- (name gitmail)
+ (name gitmaildir)
  (libraries core))
