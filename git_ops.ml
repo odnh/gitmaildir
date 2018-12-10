@@ -41,7 +41,7 @@ let mktree store tree =
 
 let get_head_tree store =
   let ic = Unix.open_process_in ((git_w_dir store) ^ " ls-tree HEAD") in
-	  GTree (In_channel.input_line_exn ic)
+	  GTree (In_channel.input_all ic |> Stdlib.String.trim)
 
 let add_to_tree (GTree tree) filename (GHash hash) =
   GTree (tree ^ "\n100644 blob " ^ hash ^ "\t" ^ filename)
