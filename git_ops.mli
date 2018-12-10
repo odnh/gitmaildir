@@ -22,8 +22,11 @@ val get_head_tree: git_store -> git_tree
 val add_to_tree: git_tree -> string -> git_hash -> git_tree
 (** add the given hash to the given git tree with filename **)
 
-val commit_tree: git_store -> git_tree -> unit
+val commit_tree: git_store -> git_hash -> git_hash
 (** perform git commit_tree operation **)
+
+val update_head: git_store -> git_hash -> unit
+(** updates refs/heads/master to the given hash in the git store **)
 
 val store_of_string: string -> git_store
 (** convert a string into a git_store type **)

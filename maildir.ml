@@ -10,13 +10,10 @@ let get_new_email_filename () =
   ^ "."
   ^ (Unix.gethostname ())
 
-(*let deliver_mail store input =
-  Git_ops.hash_object store input |>
-  Git_ops.mktree store tree |>
-  Git_ops.
-*)
-
 let deliver_mail store input =
-  hash_object store input |>
-  add_to_tree (get_head_tree store) (get_new_email_filename ()) |>
-  commit_tree store
+  hash_object store input
+  |> add_to_tree (get_head_tree store) (get_new_email_filename ())
+  |> mktree store
+  |> commit_tree store
+  |> update_head store
+
