@@ -16,28 +16,28 @@ let git_w_dir (GStore store) =
 let get_head_hash store =
   let ic = Unix.open_process_in ((git_w_dir store) ^ "rev-parse HEAD") in
   let hash = GHash(In_channel.input_line_exn ic) in
-  let _signal = Unix.close_process_in ic in
-    hash
+  let _ = Unix.close_process_in ic in
+  hash
 
 let hash_object store input =
 	let data = In_channel.input_all input in
 	let ic, oc = Unix.open_process ((git_w_dir store) ^ "hash-object -w --stdin") in
-	let _signal = Out_channel.output_string oc data in
+	let _ = Out_channel.output_string oc data in
 	Out_channel.close oc; (* This is necessary to send EOF to proc *)
 	let hash = GHash(In_channel.input_line_exn ic) in
-	let _signal2 = Unix.close_process (ic, oc) in
-		hash
+	let _ = Unix.close_process (ic, oc) in
+  hash
 
 let cat_file store hash =
 	Unix.open_process_in ((git_w_dir store) ^ "cat-file -p " ^ (string_of_hash hash))
 
 let mktree store tree =
 	let ic, oc = Unix.open_process ((git_w_dir store) ^ "mktree") in
-	let _signal = Out_channel.output_string oc (string_of_tree tree) in
+	let _ = Out_channel.output_string oc (string_of_tree tree) in
 	Out_channel.close oc;
 	let hash = GHash(In_channel.input_line_exn ic) in
-	let _signal2 = Unix.close_process (ic,oc) in
-		hash
+	let _ = Unix.close_process (ic,oc) in
+	hash
 
 let get_head_tree store =
   let ic = Unix.open_process_in ((git_w_dir store) ^ " ls-tree HEAD") in
@@ -52,13 +52,13 @@ let commit_tree store (GHash hash) =
                                    ^ "commit-tree "
                                    ^ hash
                                    ^ " -p " ^ head_hash) in
-  let _signal = Out_channel.output_string oc "Deliver new email" in
+  let _ = Out_channel.output_string oc "Deliver new email" in
   Out_channel.close oc;
   let commit = GHash(In_channel.input_line_exn ic) in
-	let _signal = Unix.close_process (ic, oc) in
-	  commit
+	let _ = Unix.close_process (ic, oc) in
+	commit
 
 let update_head store (GHash hash) =
   let ic = Unix.open_process_in ((git_w_dir store) ^ "update-ref refs/heads/master " ^ hash) in
-  let _signal = Unix.close_process_in ic in
-    ()
+  let _ = Unix.close_process_in ic in
+  ()
