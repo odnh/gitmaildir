@@ -8,9 +8,14 @@ let deliver () =
   let st = Git_ops.store_of_string "/Users/oliver/Google Drive/Cambridge/CST_II/project/testing/gt/.git" in
   Maildir.deliver_mail st In_channel.stdin
 
+let delete () =
+  let st = Git_ops.store_of_string "/Users/oliver/Google Drive/Cambridge/CST_II/project/testing/gt/.git" in
+  let line = In_channel.input_line_exn In_channel.stdin in
+  Maildir.delete_mail st line
+
 let take_action action = match action with
   | "deliver" -> print_endline "Delivering"; deliver ()
-  | "insert" -> print_endline "Insert"
+  | "delete" -> print_endline "Deleting"; delete ()
   | other -> print_endline ("No action for: " ^ other)
 
 let command =
