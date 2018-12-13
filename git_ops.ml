@@ -19,6 +19,7 @@ let get_head_hash store =
   let _ = Unix.close_process_in ic in
   hash
 
+
 let hash_object store input =
 	let data = In_channel.input_all input in
 	let ic, oc = Unix.open_process ((git_w_dir store) ^ "hash-object -w --stdin") in
@@ -62,3 +63,24 @@ let update_head store (GHash hash) =
   let ic = Unix.open_process_in ((git_w_dir store) ^ "update-ref refs/heads/master " ^ hash) in
   let _ = Unix.close_process_in ic in
   ()
+
+let remove_from_tree (GTree tree) (GHash hash) =
+  let contains h l = match List.nth (String.split ~on:' ' l) 2 with
+    | None -> true
+    | Some s -> s <> h in
+  tree |> String.split_lines |> List.filter ~f:(contains hash) |> String.concat ~sep:"\n" 
+    |> (fun x -> GTree x)
+
+let hash_from_filename store name =
+  let GTree(tree) = get_head_tree store in
+  let rec get_line = function
+    | [] -> None
+    | x::xs -> match List.nth (String.split ~on:'\t' x) 1 with
+        | None -> get_line xs
+        | Some s -> if s = name then Some s else get_line xs in
+  let get_hash = function
+    | None -> None
+    | Some line -> match String.split ~on:' ' line with
+        | _::_::x3::_ -> Some (GHash x3)
+        | _ -> None in
+  String.split_lines tree |> get_line |> get_hash

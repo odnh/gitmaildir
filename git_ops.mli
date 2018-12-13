@@ -1,4 +1,4 @@
-(** The type of a git store (need to update from ocaml-git*) *)
+(** The type of a git store *)
 type git_store 
 
 (** The type of a git tree *)
@@ -36,3 +36,9 @@ val tree_of_string: string -> git_tree
 
 (** convert a string to a git_hash *)
 val hash_of_string: string -> git_hash
+
+(** removes the given hash from the given tree. NB no impact on store *)
+val remove_from_tree: git_tree -> git_hash -> git_tree
+
+(** returns a hash for a file name in the current tree *)
+val hash_from_filename: git_store -> string -> git_hash option
