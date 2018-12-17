@@ -1,3 +1,3 @@
 (executable
  (name gitmaildir)
- (libraries core))
+ (libraries core git-unix lwt))
