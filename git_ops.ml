@@ -2,24 +2,14 @@ open Core
 open Git_unix
 open Lwt.Infix
 
-let store_of_string path =
-  Fpath.v path
-  |> Store.v
+(* -------------------- Static definitions -------------------- *)  
 
-let add_blob_to_store store input =
-  In_channel.input_all input
-  |> Store.Value.Blob.of_string 
-  |> Store.Value.blob
-  |> Store.write store
+let default_user : Git.User.t =
+  { name = "gitmaildir"; email = ""; date = (0L, None) }
 
-  (*let get_ref_tree store ref = need to work out how to turn a ref into something useful *)
+(* -------------------- Helper functions ------------------- *)
 
-  (*let commit_tree store tree message =
-    let author = in (* need to work out how to create a Git.User *)
-let commiter = in (* same here *)
-Store.Value.Commit.make ~tree ~author: ~commiter: message*)
-
-  (** Returns a pair of a list and the last element in it *)
+(** Returns a pair of a list and the last element in it *)
 let lwt_option_map a b =
   Lwt.map (fun x -> match x with Some x -> Some (a x) | None -> None) b
 
@@ -61,6 +51,20 @@ let store_write_option store value =
     | Ok (h, _) -> Some h
     | _ -> None)
 
+(* -------------------- Main Functions -------------------- *)
+
+let store_of_string path =
+  Fpath.v path
+  |> Store.v
+
+let add_blob_to_store store input =
+  In_channel.input_all input
+  |> Store.Value.Blob.of_string 
+  |> Store.Value.blob
+  |> Store.write store
+  >|= Result.ok
+  >>>| (function (h, _ ) -> h)
+
 let add_hash_to_tree store tree path hash =
   let module Tree = Store.Value.Tree in
   match get_last @@ Git.Path.segs path with
@@ -100,4 +104,10 @@ let add_hash_to_tree store tree path hash =
             | None -> Lwt.return_none) in
       aux loc tree
 
-
+let commit_tree store tree parent message =
+  Store.Value.Commit.make ~tree:tree ~author:default_user
+    ~committer:default_user message ~parents:[parent]
+  |> Store.Value.commit
+  |> Store.write store
+  >|= Result.ok
+  >>>| (function (h, _ ) -> h)
