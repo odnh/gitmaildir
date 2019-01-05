@@ -8,7 +8,7 @@ let deliver () =
     let store = Git_ops.store_of_string
       "/Users/oliver/Google Drive/Cambridge/CST_II/project/testing/gt" in
     let store_no_err = match Lwt_main.run store with Ok s -> s | Error _ -> failwith "ERR" in
-    let _ = Git_ops.add_to_store store_no_err In_channel.stdin in
+    let _ = Git_ops.add_blob_to_store store_no_err In_channel.stdin in
     ()
 
 let take_action action = match action with
