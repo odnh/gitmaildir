@@ -56,6 +56,7 @@ let store_write_option store value =
 let store_of_string path =
   Fpath.v path
   |> Store.v
+  >|= Result.ok
 
 let add_blob_to_store store input =
   In_channel.input_all input
@@ -104,7 +105,7 @@ let add_hash_to_tree store tree path hash =
           | None -> Lwt.return_none) in
     aux loc tree
 
-let commit_tree store tree parent message =
+let commit_tree store parent message tree =
   Store.Value.Commit.make ~tree:tree ~author:default_user
     ~committer:default_user message ~parents:[parent]
   |> Store.Value.commit
@@ -122,5 +123,24 @@ let hash_of_ref store ref =
       | Error _ -> Lwt.return_none) in
   aux ref
 
+let update_ref store ref hash =
+  let contents : Store.Reference.head_contents = Hash hash in
+  Store.Ref.write store ref contents
+  >|= Result.ok
+
 let get_master_tree store =
   hash_of_ref store Git.Reference.master
+
+let get_commit_parents store commit =
+  Store.read store commit
+  >>>= (function
+    | Commit c -> Some c 
+    | _ -> None)
+  >>>| Store.Value.Commit.parents
+
+let get_commit_tree store commit =
+  Store.read store commit
+  >>>= (function
+    | Commit c -> Some c 
+    | _ -> None)
+  >>>| Store.Value.Commit.tree
