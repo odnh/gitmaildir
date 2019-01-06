@@ -13,5 +13,8 @@ val add_blob_to_store : Store.t -> in_channel -> Store.Hash.t option Lwt.t
 val commit_tree : Store.t -> Store.Hash.t -> Store.Hash.t -> string -> Store.Hash.t option Lwt.t
 
 (** Inserts hash at point given by path in tree (will fail if intermediate dirs do not exist) *)
-val add_hash_to_tree: Store.t -> Store.Hash.t -> Git.Path.t -> Store.Hash.t
+val add_hash_to_tree : Store.t -> Store.Hash.t -> Git.Path.t -> Store.Hash.t
                       -> Store.Hash.t option Lwt.t
+
+(** Follows reference until returning the final hash pointed to *)
+val hash_of_ref : Store.t -> Git.Reference.t -> Store.Hash.t option Lwt.t
