@@ -29,7 +29,7 @@ let get_last l =
   (List.hd rev, Option.map (List.tl rev) ~f:List.rev)
   |> option_pair
 
-  (** returns and Ok Tree if is a tree and Error otherwise *)
+(** returns and Ok Tree if is a tree and Error otherwise *)
 let read_as_tree store hash =
   let data = Store.read store hash in
   let match_tree = function
@@ -55,12 +55,12 @@ let store_write_option store value =
 
 let store_of_string path =
   Fpath.v path
-  |> Store.v
+    |> Store.v
   >|= Result.ok
 
 let add_blob_to_store store input =
   In_channel.input_all input
-  |> Store.Value.Blob.of_string 
+    |> Store.Value.Blob.of_string 
   |> Store.Value.blob
   |> Store.write store
   >|= Result.ok
@@ -71,11 +71,11 @@ let add_hash_to_tree store tree path hash =
   match get_last @@ Git.Path.segs path with
   | None -> Lwt.return_none
   | Some (name, loc) ->
-    let new_entry = make_tree_entry hash name in
-    let rec aux path tree_hash =
-      match path with
+      let new_entry = make_tree_entry hash name in
+      let rec aux path tree_hash =
+        match path with
       | [] ->
-        read_as_tree store tree_hash
+          read_as_tree store tree_hash
       >>>| (fun t -> Tree.add t new_entry)
       >>>| Store.Value.tree
       >>= (fun v -> match v with
@@ -103,12 +103,12 @@ let add_hash_to_tree store tree path hash =
             | Ok (h, _) -> Some h
             | _ -> None)
           | None -> Lwt.return_none) in
-    aux loc tree
+      aux loc tree
 
 let commit_tree store parent message tree =
   Store.Value.Commit.make ~tree:tree ~author:default_user
     ~committer:default_user message ~parents:[parent]
-  |> Store.Value.commit
+          |> Store.Value.commit
   |> Store.write store
   >|= Result.ok
   >>>| (function (h, _ ) -> h)
