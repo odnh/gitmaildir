@@ -128,11 +128,12 @@ let update_ref store ref hash =
   Store.Ref.write store ref contents
   >|= Result.ok
 
-let get_master_tree store =
+let get_master_commit store =
   hash_of_ref store Git.Reference.master
 
 let get_commit_parents store commit =
   Store.read store commit
+  >|= Result.ok
   >>>= (function
     | Commit c -> Some c 
     | _ -> None)
@@ -140,6 +141,7 @@ let get_commit_parents store commit =
 
 let get_commit_tree store commit =
   Store.read store commit
+  >|= Result.ok
   >>>= (function
     | Commit c -> Some c 
     | _ -> None)
