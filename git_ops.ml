@@ -70,39 +70,39 @@ let add_hash_to_tree store tree path hash =
   match get_last @@ Git.Path.segs path with
   | None -> Lwt.return_none
   | Some (name, loc) ->
-      let new_entry = make_tree_entry hash name in
-      let rec aux path tree_hash =
-        match path with
+    let new_entry = make_tree_entry hash name in
+    let rec aux path tree_hash =
+      match path with
       | [] ->
-          read_as_tree store tree_hash
-        >>>| (fun t -> Tree.add t new_entry)
-        >>>| Store.Value.tree
-        >>= (fun v -> match v with
-          | Some v -> store_write_option store v
-          | None -> Lwt.return_none)
-        | x::xs ->
-            let curr_tree = read_as_tree store tree_hash in
-            let subtree_entry = curr_tree >>>= entry_from_tree x in
-            let new_subtree_hash = subtree_entry 
-          >>= (function
-            | Some e -> aux xs e.Tree.node
-               | None -> Lwt.return_none) in
-            let new_subtree_entry = subtree_entry
-          >>= (fun e -> match e with
-            | Some e -> new_subtree_hash >>>| Tree.entry e.Tree.name e.Tree.perm
-            | None -> Lwt.return_none) in
-            let new_tree = curr_tree
-          >>>| Tree.remove ~name:x
-          >>= (fun t -> match t with
-            | Some t -> new_subtree_entry >>>| Tree.add t
-            | None -> Lwt.return None) in
-            new_tree >>>| Store.Value.tree
-          >>= (function
-            | Some v -> Store.write store v >|= (function
-              | Ok (h, _) -> Some h
-                                                  | _ -> None)
-            | None -> Lwt.return_none) in
-      aux loc tree
+        read_as_tree store tree_hash
+      >>>| (fun t -> Tree.add t new_entry)
+      >>>| Store.Value.tree
+      >>= (fun v -> match v with
+        | Some v -> store_write_option store v
+        | None -> Lwt.return_none)
+      | x::xs ->
+          let curr_tree = read_as_tree store tree_hash in
+          let subtree_entry = curr_tree >>>= entry_from_tree x in
+          let new_subtree_hash = subtree_entry 
+        >>= (function
+          | Some e -> aux xs e.Tree.node
+          | None -> Lwt.return_none) in
+          let new_subtree_entry = subtree_entry
+        >>= (fun e -> match e with
+          | Some e -> new_subtree_hash >>>| Tree.entry e.Tree.name e.Tree.perm
+          | None -> Lwt.return_none) in
+          let new_tree = curr_tree
+        >>>| Tree.remove ~name:x
+        >>= (fun t -> match t with
+          | Some t -> new_subtree_entry >>>| Tree.add t
+          | None -> Lwt.return None) in
+          new_tree >>>| Store.Value.tree
+        >>= (function
+          | Some v -> Store.write store v >|= (function
+            | Ok (h, _) -> Some h
+            | _ -> None)
+          | None -> Lwt.return_none) in
+    aux loc tree
 
 let commit_tree store tree parent message =
   Store.Value.Commit.make ~tree:tree ~author:default_user
@@ -122,7 +122,5 @@ let hash_of_ref store ref =
       | Error _ -> Lwt.return_none) in
   aux ref
 
-(* TODO: write function that takes a reference and returns the hash at the end of the chain *)
 let get_master_tree store =
-  Store.Ref.read store Git.Reference.master 
-  >|=
+  hash_of_ref store Git.Reference.master
