@@ -111,3 +111,18 @@ let commit_tree store tree parent message =
   |> Store.write store
   >|= Result.ok
   >>>| (function (h, _ ) -> h)
+
+let hash_of_ref store ref =
+  let rec aux ref =
+    Store.Ref.read store ref
+    >>= (function
+      | Ok a -> (match a with
+        | Hash h -> Lwt.return_some h
+        | Ref r -> aux r)
+      | Error _ -> Lwt.return_none) in
+  aux ref
+
+(* TODO: write function that takes a reference and returns the hash at the end of the chain *)
+let get_master_tree store =
+  Store.Ref.read store Git.Reference.master 
+  >|=
