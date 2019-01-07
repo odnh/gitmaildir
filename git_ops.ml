@@ -2,11 +2,6 @@ open Core
 open Git_unix
 open Lwt.Infix
 
-(* -------------------- Static definitions -------------------- *)  
-
-let default_user : Git.User.t =
-  { name = "gitmaildir"; email = ""; date = (0L, None) }
-
 (* -------------------- Helper functions ------------------- *)
 
 (** Returns a pair of a list and the last element in it *)
@@ -50,6 +45,11 @@ let store_write_option store value =
   >|= (function
     | Ok (h, _) -> Some h
     | _ -> None)
+
+let get_user = fun () ->
+  { Git.User.name = "gitmaildir";
+    Git.User.email = "gitmaildir@localhost";
+    Git.User.date = (Unix.time () |> Int64.of_float, None) }
 
 (* -------------------- Main Functions -------------------- *)
 
@@ -106,9 +106,10 @@ let add_hash_to_tree store tree path hash =
       aux loc tree
 
 let commit_tree store parent message tree =
-  Store.Value.Commit.make ~tree:tree ~author:default_user
-    ~committer:default_user message ~parents:[parent]
-          |> Store.Value.commit
+  let user = get_user () in
+  Store.Value.Commit.make ~tree:tree ~author:user
+    ~committer:user message ~parents:[parent]
+  |> Store.Value.commit
   |> Store.write store
   >|= Result.ok
   >>>| (function (h, _ ) -> h)
