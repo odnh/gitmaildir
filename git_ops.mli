@@ -16,6 +16,9 @@ val commit_tree : Store.t -> Store.Hash.t -> string -> Store.Hash.t -> Store.Has
 val add_hash_to_tree : Store.t -> Store.Hash.t -> Git.Path.t -> Store.Hash.t
                       -> Store.Hash.t option Lwt.t
 
+(** Removes file at path from the tree (fails in same way as add_hash_to_tree) *)
+val remove_entry_from_tree : Store.t -> Store.Hash.t -> Git.Path.t -> Store.Hash.t option Lwt.t
+
 (** Follows reference until returning the final hash pointed to *)
 val hash_of_ref : Store.t -> Git.Reference.t -> Store.Hash.t option Lwt.t
 
