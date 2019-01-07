@@ -35,21 +35,11 @@ let deliver_mail store input =
   |> lwt_option_bind2 (fun a b -> commit_tree store a "deliver mail" b) master_commit
   >>== update_ref store master_ref
 
-(*
-let move_mail store name new_name =
-  match hash_from_filename store name with
-  | None -> failwith "Email does not exist"
-  | Some hash ->
-      let tree = get_head_tree store in
-let new_tree = remove_from_tree tree hash in
-add_to_tree new_tree new_name hash |> mktree store
-  |> commit_tree store |> update_head store
-
-let delete_mail store name =
-  match hash_from_filename store name with
-  | None -> failwith "Email does not exist"
-  | Some hash ->
-      let tree = get_head_tree store in
-remove_from_tree tree hash |> mktree store
-  |> commit_tree store |> update_head store
-*)
+let delete_mail store path =
+  let gpath = Git.Path.v (Fpath.to_string path) in
+  let master_ref = Git.Reference.master in
+  let master_commit = get_master_commit store in
+  let master_tree = master_commit >>== get_commit_tree store in
+  master_tree >>== (fun a -> remove_entry_from_tree store a gpath)
+  |> lwt_option_bind2 (fun a b -> commit_tree store a "remove mail" b) master_commit
+  >>== update_ref store master_ref

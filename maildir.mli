@@ -7,9 +7,9 @@ type t
 val deliver_mail : Git_unix.Store.t -> In_channel.t -> unit option Lwt.t
 
 (*
-(** move (ie rename) and email TODO: support having directory hierarchy *)
-val move_mail: Git_ops.git_store -> string -> string -> unit
-
-(** removes the given mail from the current tree TODO: support a directory hierarchy *)
-val delete_mail: Git_ops.git_store -> string -> unit
+(** move (ie rename) an email *)
+val move_mail : Git_unix.Store.t -> Fpath.t -> Fpath.t -> unit
 *)
+
+(** removes the given mail from the current tree *)
+val delete_mail : Git_unix.Store.t -> Fpath.t -> unit option Lwt.t
