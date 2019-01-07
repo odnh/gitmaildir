@@ -186,3 +186,23 @@ let get_commit_tree store commit =
     | Commit c -> Some c 
     | _ -> None)
   >>>| Store.Value.Commit.tree
+
+let hash_of_path store tree path =
+  let module Tree = Store.Value.Tree in
+  match get_last @@ Git.Path.segs path with
+  | None -> Lwt.return_none
+  | Some (name, loc) ->
+    let rec aux path tree_hash =
+      match path with
+      | [] ->
+        read_as_tree store tree_hash
+        >>>| Tree.to_list
+        >>>= List.find ~f:(fun e -> e.Tree.name = name)
+        >>>| (fun e -> e.Tree.node)
+      | x::xs ->
+        let curr_tree = read_as_tree store tree_hash in
+        let subtree_entry = curr_tree >>>= entry_from_tree x in
+        subtree_entry >>= (function
+          | Some e -> aux xs e.Tree.node
+          | None -> Lwt.return_none) in
+    aux loc tree
