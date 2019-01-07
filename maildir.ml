@@ -50,7 +50,7 @@ let move_mail store path new_path =
   let master_ref = Git.Reference.master in
   let master_commit = get_master_commit store in
   let master_tree = master_commit >>== get_commit_tree store in
-  let hash = hash_of_path store path in
+  let hash = master_tree >>== (fun t -> hash_of_path store t path) in
   master_tree >>== (fun a -> remove_entry_from_tree store a path)
   |> lwt_option_bind2 (fun a b -> add_hash_to_tree store b new_path a) hash
   >>== update_ref store master_ref

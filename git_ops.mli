@@ -32,4 +32,4 @@ val get_commit_parents : Store.t -> Store.Hash.t -> Store.Hash.t list option Lwt
 val get_commit_tree : Store.t -> Store.Hash.t -> Store.Hash.t option Lwt.t
 
 (** Returns the hash for object at given path (relative to root of given tree *)
-val hash_of_path : Store.t -> Git.Path.t -> Store.Hash.t option Lwt.t
+val hash_of_path : Store.t -> Store.Hash.t -> Git.Path.t -> Store.Hash.t option Lwt.t
