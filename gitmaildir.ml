@@ -7,18 +7,18 @@ let action_param =
 let deliver () =
   let store = Git_ops.store_of_string
     "/Users/oliver/Google Drive/Cambridge/CST_II/project/testing/gtspeed" in
-  let store_no_err = match Lwt_main.run store with Some s -> s | None -> failwith "ERR" in
+  let store_no_err = match Lwt_main.run store with Ok s -> s | Error _ -> failwith "ERR" in
   match Lwt_main.run @@ Maildir.deliver_mail store_no_err In_channel.stdin with
-  | Some _ -> ()
-  | None -> failwith "ERR"
+  | Ok _ -> ()
+  | Error _ -> failwith "ERR"
 
 let delete path =
   let store = Git_ops.store_of_string
     "/Users/oliver/Google Drive/Cambridge/CST_II/project/testing/gt" in
-  let store_no_err = match Lwt_main.run store with Some s -> s | None -> failwith "ERR" in
+  let store_no_err = match Lwt_main.run store with Ok s -> s | Error _ -> failwith "ERR" in
   match Lwt_main.run @@ Maildir.delete_mail store_no_err (Fpath.v path) with
-  | Some _ -> ()
-  | None -> failwith "ERR"
+  | Ok _ -> ()
+  | Error _ -> failwith "ERR"
 
 let take_action action = match action with
   | "deliver" -> print_endline "Delivering"; deliver ()
