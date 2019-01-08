@@ -1,36 +1,28 @@
 open Core
+open Cmdliner
+open Lwt_result_helpers
 
-let action_param =
-  let open Command.Param in
-  anon ("action" %: string)
-
-let deliver () =
-  let store = Git_ops.store_of_string
-    "/Users/oliver/Google Drive/Cambridge/CST_II/project/testing/gtspeed" in
-  let store_no_err = match Lwt_main.run store with Ok s -> s | Error _ -> failwith "ERR" in
-  match Lwt_main.run @@ Maildir.deliver_mail store_no_err In_channel.stdin with
+let deliver store =
+  let store = Git_ops.store_of_string store in
+  let deliver_lwt = store >>== (fun s -> Maildir.deliver_mail s In_channel.stdin) in
+  match Lwt_main.run deliver_lwt with
   | Ok _ -> ()
-  | Error _ -> failwith "ERR"
+  | Error _ -> failwith "ERROR"
 
-let delete path =
-  let store = Git_ops.store_of_string
-    "/Users/oliver/Google Drive/Cambridge/CST_II/project/testing/gt" in
-  let store_no_err = match Lwt_main.run store with Ok s -> s | Error _ -> failwith "ERR" in
-  match Lwt_main.run @@ Maildir.delete_mail store_no_err (Fpath.v path) with
-  | Ok _ -> ()
-  | Error _ -> failwith "ERR"
+let deliver_store =
+  let doc = "Path of the gitmaildir to deliver to." in
+  let env = Arg.env_var "GITMAILDIR_PATH" ~doc in
+  let doc = "The gitmaildir path" in
+  Arg.(value & pos 0 string "." & info [] ~env ~docv:"PATH" ~doc)
 
-let take_action action = match action with
-  | "deliver" -> print_endline "Delivering"; deliver ()
-  | "delete" -> print_endline "Deleting"; delete "1546860539669981.994326685.Olivers-MacBook-Pro.local" 
-  | other -> print_endline ("No action for: " ^ other)
+let deliver_t = Term.(const deliver $ deliver_store)
 
-let command =
-  Command.basic
-  ~summary:"Interact with git maildir"
-  ~readme:(fun () -> "More detailed info")
-  (Command.Param.map action_param ~f:(fun action ->
-    (fun () -> take_action action)))
+let info =
+  let doc = "Manage a gitmaildir (git extension to the maildir format)" in
+  let man = [
+    `S Manpage.s_bugs;
+    `P "To report bugs, open an issue at github.com/odnh/gitmaildir." ]
+  in
+  Term.info "gitmaildir" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
 
-let () =
-  Command.run ~version:"0.1" command;
+let () = Term.exit @@ Term.eval (deliver_t, info)
