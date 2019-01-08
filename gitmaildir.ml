@@ -9,20 +9,20 @@ let deliver store =
   | Ok _ -> ()
   | Error _ -> failwith "ERROR"
 
-let deliver_store =
+let store_arg =
   let doc = "Path of the gitmaildir to deliver to." in
   let env = Arg.env_var "GITMAILDIR_PATH" ~doc in
   let doc = "The gitmaildir path" in
-  Arg.(value & pos 0 string "." & info [] ~env ~docv:"PATH" ~doc)
+  Arg.(required & pos 0 (some string) None & info [] ~env ~docv:"PATH" ~doc)
 
-let deliver_t = Term.(const deliver $ deliver_store)
+let deliver_t = Term.(const deliver $ store_arg)
 
 let info =
   let doc = "Manage a gitmaildir (git extension to the maildir format)" in
   let man = [
     `S Manpage.s_bugs;
-    `P "To report bugs, open an issue at github.com/odnh/gitmaildir." ]
+    `P "To report bugs, open an issue at github.com/odnh/gitmaildir" ]
   in
-  Term.info "gitmaildir" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
+  Term.info "gitmaildir" ~version:"0.1" ~doc ~exits:Term.default_exits ~man
 
 let () = Term.exit @@ Term.eval (deliver_t, info)
