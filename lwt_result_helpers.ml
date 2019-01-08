@@ -1,23 +1,28 @@
-let lwt_option_map a b =
-  Lwt.map (fun x -> match x with Some x -> Some (a x) | None -> None) b
+(** maps function over lwt and option *)
+let lwt_result_map a b =
+  Lwt.map (fun x -> match x with Ok x -> Ok (a x) | Error e -> Error e) b
 
-let lwt_option_bind a b =
-  Lwt.map (fun x -> match x with Some x -> a x | None -> None) b
+(** maps function over lwt, binds over option *)
+let lwt_result_bind a b =
+  Lwt.map (fun x -> match x with Ok x -> a x | Error e -> Error e) b
 
-let lwt_option_bind_both a b = Lwt.bind b (function | Some s -> a s | None -> Lwt.return_none)
+(** binds function over both lwt and option *)
+let lwt_result_bind_both a b =
+  Lwt.bind b (function | Ok s -> a s | Error e -> Lwt.return (Error e))
 
-let lwt_option_bind2 f a b =
+(** lwt_option_bind_both but for a function taking 2 values *)
+let lwt_result_bind2 f a b =
   Lwt.bind a (function
-    | Some a -> Lwt.bind b (function
-      | Some b -> f a b
-      | None -> Lwt.return_none)
-    | None -> Lwt.return_none)
+    | Ok a -> Lwt.bind b (function
+      | Ok b -> f a b
+      | Error e -> Lwt.return (Error e))
+    | Error e -> Lwt.return (Error e))
 
-let (>>>|) a b = lwt_option_map b a
+let (>>>|) a b = lwt_result_map b a
 
-let (>>>=) a b = lwt_option_bind b a
+let (>>>=) a b = lwt_result_bind b a
 
-let (>>==) a b = lwt_option_bind_both b a
+let (>>==) a b = lwt_result_bind_both b a
 
 let option_pair = function
   | Some a, Some b -> Some (a, b)
