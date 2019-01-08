@@ -3,7 +3,7 @@ open Git_ops
 
 type t
 
-(** -------------------- Helper functions -------------------- *) 
+(** -------------------- Helper functions -------------------- *)
 
 let lwt_option_bind_both a b = Lwt.bind b (function | Some s -> a s | None -> Lwt.return_none)
 
@@ -23,7 +23,7 @@ let get_new_email_filename () =
   ^ "."
   ^ (Unix.gethostname ())
 
-(** -------------------- Main functions -------------------- *) 
+(** -------------------- Main functions -------------------- *)
 
 let deliver_mail store input =
   let mail_name = Git.Path.v @@ get_new_email_filename () in
@@ -53,4 +53,5 @@ let move_mail store path new_path =
   let hash = master_tree >>== (fun t -> hash_of_path store t path) in
   master_tree >>== (fun a -> remove_entry_from_tree store a path)
   |> lwt_option_bind2 (fun a b -> add_hash_to_tree store b new_path a) hash
+  |> lwt_option_bind2 (fun a b -> commit_tree store a "move mail" b) master_commit
   >>== update_ref store master_ref
