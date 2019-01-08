@@ -1,20 +1,10 @@
 open Core
 open Git_ops
+open Lwt_result_helpers
 
 type t
 
-(** -------------------- Helper functions -------------------- *)
-
-let lwt_option_bind_both a b = Lwt.bind b (function | Some s -> a s | None -> Lwt.return_none)
-
-let lwt_option_bind2 f a b =
-  Lwt.bind a (function
-    | Some a -> Lwt.bind b (function
-      | Some b -> f a b
-      | None -> Lwt.return_none)
-    | None -> Lwt.return_none)
-
-let (>>==) a b = lwt_option_bind_both b a
+(* -------------------- Helper functions -------------------- *)
 
 let get_new_email_filename () =
   (string_of_int (int_of_float ((Unix.gettimeofday ()) *. 1_000_000.)))
@@ -23,7 +13,7 @@ let get_new_email_filename () =
   ^ "."
   ^ (Unix.gethostname ())
 
-(** -------------------- Main functions -------------------- *)
+(* -------------------- Main functions -------------------- *)
 
 let deliver_mail store input =
   let mail_name = Git.Path.v @@ get_new_email_filename () in

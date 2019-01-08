@@ -1,30 +1,16 @@
 open Core
 open Git_unix
 open Lwt.Infix
+open Lwt_result_helpers
 
-(* -------------------- Helper functions ------------------- *)
-
-(** Returns a pair of a list and the last element in it *)
-let lwt_option_map a b =
-  Lwt.map (fun x -> match x with Some x -> Some (a x) | None -> None) b
-
-let lwt_option_bind a b =
-  Lwt.map (fun x -> match x with Some x -> a x | None -> None) b
-
-let (>>>|) a b = lwt_option_map b a
-
-let (>>>=) a b = lwt_option_bind b a
-
-let option_pair = function
-  | Some a, Some b -> Some (a, b)
-  | _ -> None
+(* -------------------- Helper functions -------------------- *)
 
 let get_last l =
   let rev = List.rev l in
   (List.hd rev, Option.map (List.tl rev) ~f:List.rev)
   |> option_pair
 
-  (** returns and Ok Tree if is a tree and Error otherwise *)
+(** returns and Some Tree if is a tree and Error otherwise *)
 let read_as_tree store hash =
   let data = Store.read store hash in
   let match_tree = function
@@ -51,7 +37,7 @@ let get_user = fun () ->
     Git.User.email = "gitmaildir@localhost";
     Git.User.date = (Unix.time () |> Int64.of_float, None) }
 
-  (* -------------------- Main Functions -------------------- *)
+(* -------------------- Main Functions -------------------- *)
 
 let store_of_string path =
   Fpath.v path
