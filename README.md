@@ -18,7 +18,7 @@ There are three main parts:
 ### Dependencies:
 
 - `core, lwt, cmdliner, git-unix`
-- Can be install using opam: `opam install core lwt cmdliner`
+- Can be install using opam: `opam install core lwt cmdliner git-unix`
 
 ### Build and run:
 
