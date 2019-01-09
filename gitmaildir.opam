@@ -1,0 +1,12 @@
+opam-version: "2.0"
+name: "gitmaildir"
+version: "~dev"
+synopsis: "A library to manage a gitmaildir (a maildir extened using git)"
+maintainer: "Oliver Hope <oliverdnhope@gmail.com>"
+authors: "Oliver Hope <oliverdnhope@gmail.com>"
+license: "ISC License"
+homepage: "https://github.com/odnh/gitmaildir"
+bug-reports: "https://github.com/odnh/gitmaildir/issues"
+dev-repo: "git+https://github.com/odnh/gitmaildir.git"
+depends: ["core" "lwt" "git-unix"]
+build: ["dune" "build" "-p" name]

@@ -1,0 +1,3 @@
+(executable
+ (name gitmaildir_daemon)
+ (libraries core lwt cmdliner gitmaildir))

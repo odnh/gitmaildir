@@ -1,0 +1,11 @@
+opam-version: "2.0"
+name: "gitmaildir_cli"
+version: "~dev"
+synopsis: "A command line tool for interacting with a gitmaildir"
+maintainer: "Oliver Hope <oliverdnhope@gmail.com>"
+authors: "Oliver Hope <oliverdnhope@gmail.com>"
+license: "ISC License"
+homepage: "https://github.com/odnh/gitmaildir"
+bug-reports: "https://github.com/odnh/gitmaildir/issues"
+depends: ["core" "lwt" "git-unix" "gitmaildir"]
+build: ["dune" "build" "-p" name]

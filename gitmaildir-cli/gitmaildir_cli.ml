@@ -1,11 +1,14 @@
 open Core
 open Cmdliner
-open Lwt_result_helpers
+open Gitmaildir.Lwt_result_helpers
+
+module Maildir = Gitmaildir.Maildir
+module Git_ops = Gitmaildir.Git_ops
 
 (* deliver command *)
 
 let deliver store =
-  let store = Git_ops.store_of_string store in
+  let store = Gitmaildir.Git_ops.store_of_string store in
   let deliver_lwt = store >>== (fun s -> Maildir.deliver_mail s In_channel.stdin) in
   match Lwt_main.run deliver_lwt with
   | Ok _ -> ()
@@ -76,7 +79,7 @@ let gitmaildir_info =
     `S Manpage.s_bugs;
     `P "To report bugs, open an issue at github.com/odnh/gitmaildir" ]
   in
-  Term.info "gitmaildir" ~version:"0.1" ~doc ~exits:Term.default_exits ~man
+  Term.info "gitmaildir" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
 
 let gitmaildir_t =
   Term.(const ())
