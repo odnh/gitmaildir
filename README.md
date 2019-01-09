@@ -12,3 +12,16 @@ There are three main parts:
 - `gitmaildir`: A library for interacting with the maildir
 - `gitmaildir-cli`: A command line tool to interact with the maildir
 - `gitmaildir-daemon`: A daemon process to allow standard maildir clients to interact with a git maildir
+
+## Building
+
+### Dependencies:
+
+- `core, lwt, cmdliner`
+- Can be install using opam: `opam install core lwt cmdliner`
+
+### Build and run:
+
+- Build: `dune build`
+- Install: `dune install <package>`
+- Run: `gitmaildir_cli <options>`
