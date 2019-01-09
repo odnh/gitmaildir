@@ -79,7 +79,7 @@ let gitmaildir_info =
     `S Manpage.s_bugs;
     `P "To report bugs, open an issue at github.com/odnh/gitmaildir" ]
   in
-  Term.info "gitmaildir" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
+  Term.info "gitmaildir_cli" ~version:"%%VERSION%%" ~doc ~exits:Term.default_exits ~man
 
 let gitmaildir_t =
   Term.(const ())
