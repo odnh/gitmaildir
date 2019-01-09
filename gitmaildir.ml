@@ -17,6 +17,25 @@ let store_arg =
 
 let deliver_t = Term.(const deliver $ store_arg)
 
+let move store path new_path =
+  let store = Git_ops.store_of_string store in
+  let path = Fpath.v path in
+  let new_path = Fpath.v new_path in
+  let move_lwt = store >>== (fun s -> Maildir.move_mail s path new_path) in
+  match Lwt_main.run move_lwt with
+  | Ok _ -> ()
+  | Error _ -> failwith "ERROR"
+  
+let path_arg =
+  let doc = "current path of file to move" in
+  Arg.(required & pos 1 (some string) None & info [] ~docv:"MALI_PATH" ~doc)
+
+let new_path_arg =
+  let doc = "path to move file to" in
+  Arg.(required & pos 2 (some string) None & info [] ~docv:"NEW_MAIL_PATH" ~doc)
+
+let move_t = Term.(const move $ store_arg $ path_arg $ new_path_arg)
+
 let info =
   let doc = "Manage a gitmaildir (git extension to the maildir format)" in
   let man = [
