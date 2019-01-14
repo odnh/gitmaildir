@@ -55,41 +55,60 @@ let store_of_string path =
 
 let add_blob_to_store store input =
   In_channel.input_all input
-    |> Store.Value.Blob.of_string 
+    |> Store.Value.Blob.of_string
     |> Store.Value.blob
     |> write_value store
 
-let modify_tree store tree path ~f =
+(** modifies tree with a function that takes a tree and any remaining path *)
+let modify_tree_raw store tree path ~f =
   let module Tree = Store.Value.Tree in
   let path_segs = Git.Path.segs path in
   let rec aux path tree_hash =
     match path with
     | [] ->
         read_as_tree store tree_hash
-        >>>| f
+        >>== f []
         >>>| Store.Value.tree
         >>== write_value store
     | x::xs ->
         let current_tree = read_as_tree store tree_hash in
         let subtree_entry = current_tree >>>= entry_from_tree x in
-        let new_subtree_hash = subtree_entry
-        >>= (function
-          | Ok e -> aux xs e.Tree.node
-          | Error e -> Lwt.return_error e) in
-        let new_subtree_entry = subtree_entry
-        >>= (function
-          | Ok e -> new_subtree_hash >>>| Tree.entry e.Tree.name e.Tree.perm
-          | Error e -> Lwt.return_error e) in
-        let new_tree = current_tree
-        >>>| Tree.remove ~name:x
-        >>= (function
-          | Ok t -> new_subtree_entry >>>| Tree.add t
-          | Error e -> Lwt.return_error e) in
-        new_tree >>>| Store.Value.tree
-        >>= (function
-          | Ok v -> write_value store v
-          | Error e ->  Lwt.return_error e) in
+        subtree_entry >>=
+        function
+        | Error `Not_a_tree ->
+            current_tree
+            >>== f (x::xs)
+            >>>| Store.Value.tree
+            >>== write_value store
+        | Error e -> Lwt.return_error e
+        | Ok entry ->
+            let new_subtree_hash = aux xs entry.Tree.node in
+            let new_subtree_entry = entry
+            |> (fun e -> new_subtree_hash >>>| Tree.entry e.Tree.name e.Tree.perm) in
+            let new_tree = current_tree
+            >>>| Tree.remove ~name:x
+            >>== fun t -> new_subtree_entry >>>| Tree.add t in              
+            new_tree >>>| Store.Value.tree
+            >>== write_value store in
   aux path_segs tree
+
+let modify_tree store tree path ~f =
+  let mod_fun path tree = match path with
+    | [] -> Lwt.return_ok (f tree)
+    | _ -> Lwt.return_error `Not_a_tree in
+  modify_tree_raw store tree path ~f:mod_fun
+
+let modify_tree_extend store tree path ~f =
+  let module Tree = Store.Value.Tree in
+  let rec mod_fun path tree = match path with
+    | [] -> Lwt.return_ok (f tree)
+    | x::xs ->
+        mod_fun xs (Tree.of_list [])
+        >>>| Store.Value.tree
+        >>== write_value store
+        >>>| Tree.entry x `Normal
+        >>>| fun e -> Tree.of_list [e] in
+  modify_tree_raw store tree path ~f:mod_fun
 
 let get_hash_at_path store tree path =
   let module Tree = Store.Value.Tree in
@@ -97,7 +116,7 @@ let get_hash_at_path store tree path =
   let rec aux path tree_hash =
     match path with
     | [] -> Lwt.return_ok tree_hash
-    | x::xs -> 
+    | x::xs ->
         let current_tree = read_as_tree store tree_hash in
         let subtree_entry = current_tree >>>= entry_from_tree x in
         subtree_entry
@@ -122,6 +141,7 @@ let remove_entry_from_tree store tree path =
 
 let commit_tree store parent message tree =
   let user = get_user () in
+  let message = "\n" ^ message ^ "\n" in
   Store.Value.Commit.make ~tree:tree ~author:user
     ~committer:user message ~parents:[parent]
   |> Store.Value.commit
@@ -148,13 +168,16 @@ let get_master_commit store =
 let get_commit_parents store commit =
   read_value store commit
   >>>= (function
-    | Commit c -> Ok c 
+    | Commit c -> Ok c
     | _ -> Error `Not_a_commit)
   >>>| Store.Value.Commit.parents
 
 let get_commit_tree store commit =
   read_value store commit
   >>>= (function
-    | Commit c -> Ok c 
+    | Commit c -> Ok c
     | _ -> Error `Not_a_commit)
   >>>| Store.Value.Commit.tree
+
+let checkout_to_dir _ _ _ =
+    Lwt.return_ok ()
