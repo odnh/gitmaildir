@@ -1,5 +1,5 @@
 opam-version: "2.0"
-name: "gitmaildir_cli"
+name: "gitmaildir_daemon"
 version: "~dev"
 synopsis: "A dameon to allow a standard maildir client ton interact with a gitmaildir"
 maintainer: "Oliver Hope <oliverdnhope@gmail.com>"

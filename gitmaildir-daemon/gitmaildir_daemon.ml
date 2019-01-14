@@ -1,7 +1,7 @@
 open Core
 open Cmdliner
 
-let run_daemon store = (fun a -> ())
+let run_daemon _ = ()
 
 let store_arg =
   let doc = "Path of the gitmaildir to manage" in
@@ -19,5 +19,5 @@ let daemon_info =
 
 let daemon_t =
     Term.(const run_daemon $ store_arg)
-  
+
 let () = Term.exit @@ Term.eval (daemon_t, daemon_info)
