@@ -91,15 +91,37 @@ let modify_tree store tree path ~f =
           | Error e ->  Lwt.return_error e) in
   aux path_segs tree
 
-(* TODO: builds subtrees down to path containing only hash *)
+(** builds git trees down to the given path with the hash at the last position *)
 let build_subtrees store path hash =
-  match Git.Path.segs path with
-  | [] ->
-  | x::xs ->
+  let module Tree = Store.Value.Tree in
+  let rec aux = function
+    | [] -> Lwt.return_error `Invalid_path
+    | x::[] ->
+        let entry = Tree.entry x `Normal hash in
+        let tree = Tree.of_list [entry] in
+        write_value store (tree |> Store.Value.tree)
+    | x::xs ->
+        let sub_tree = aux xs in
+        let entry = sub_tree >>>| Tree.entry x `Normal in
+        let tree = entry >>>| (fun e -> Tree.of_list [e]) in
+        tree >>>| Store.Value.tree
+        >>== write_value store in
+  aux (Git.Path.segs path)
 
-(* TODO: returns any remaining path not exisiting in store *)
-let get_remaining_path store path =
-
+(** returns any remaining path not exisiting in store *)
+let get_remaining_path store tree path =
+  let module Tree = Store.Value.Tree in
+  let rec aux tree path = match path with
+    | [] -> Lwt.return_ok @@ Git.Path.of_segs []
+    | x::xs ->
+        let tree_value = read_as_tree store tree in
+        let entry = tree_value >>>= entry_from_tree x in
+        entry >>= function
+          | Error `No_entry_in_tree -> Lwt.return_ok (Git.Path.of_segs (x::xs))
+          | Ok e -> aux e.Tree.node xs
+          | Error e -> Lwt.return_error e in
+  aux tree (Git.Path.segs path)
+  
 let get_hash_at_path store tree path =
   let module Tree = Store.Value.Tree in
   let path_segs = Git.Path.segs path in
