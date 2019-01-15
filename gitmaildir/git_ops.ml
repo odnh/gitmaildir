@@ -59,56 +59,46 @@ let add_blob_to_store store input =
     |> Store.Value.blob
     |> write_value store
 
-(** modifies tree with a function that takes a tree and any remaining path *)
-let modify_tree_raw store tree path ~f =
+let modify_tree store tree path ~f =
   let module Tree = Store.Value.Tree in
   let path_segs = Git.Path.segs path in
   let rec aux path tree_hash =
     match path with
     | [] ->
         read_as_tree store tree_hash
-        >>== f []
+        >>>| f
         >>>| Store.Value.tree
         >>== write_value store
     | x::xs ->
         let current_tree = read_as_tree store tree_hash in
         let subtree_entry = current_tree >>>= entry_from_tree x in
-        subtree_entry >>=
-        function
-        | Error `Not_a_tree ->
-            current_tree
-            >>== f (x::xs)
-            >>>| Store.Value.tree
-            >>== write_value store
-        | Error e -> Lwt.return_error e
-        | Ok entry ->
-            let new_subtree_hash = aux xs entry.Tree.node in
-            let new_subtree_entry = entry
-            |> (fun e -> new_subtree_hash >>>| Tree.entry e.Tree.name e.Tree.perm) in
-            let new_tree = current_tree
-            >>>| Tree.remove ~name:x
-            >>== fun t -> new_subtree_entry >>>| Tree.add t in              
-            new_tree >>>| Store.Value.tree
-            >>== write_value store in
+        let new_subtree_hash = subtree_entry
+        >>= (function
+          | Ok e -> aux xs e.Tree.node
+          | Error e -> Lwt.return_error e) in
+        let new_subtree_entry = subtree_entry
+        >>= (function
+          | Ok e -> new_subtree_hash >>>| Tree.entry e.Tree.name e.Tree.perm
+          | Error e -> Lwt.return_error e) in
+        let new_tree = current_tree
+        >>>| Tree.remove ~name:x
+        >>= (function
+          | Ok t -> new_subtree_entry >>>| Tree.add t
+          | Error e -> Lwt.return_error e) in
+        new_tree >>>| Store.Value.tree
+        >>= (function
+          | Ok v -> write_value store v
+          | Error e ->  Lwt.return_error e) in
   aux path_segs tree
 
-let modify_tree store tree path ~f =
-  let mod_fun path tree = match path with
-    | [] -> Lwt.return_ok (f tree)
-    | _ -> Lwt.return_error `Not_a_tree in
-  modify_tree_raw store tree path ~f:mod_fun
+(* TODO: builds subtrees down to path containing only hash *)
+let build_subtrees store path hash =
+  match Git.Path.segs path with
+  | [] ->
+  | x::xs ->
 
-let modify_tree_extend store tree path ~f =
-  let module Tree = Store.Value.Tree in
-  let rec mod_fun path tree = match path with
-    | [] -> Lwt.return_ok (f tree)
-    | x::xs ->
-        mod_fun xs (Tree.of_list [])
-        >>>| Store.Value.tree
-        >>== write_value store
-        >>>| Tree.entry x `Normal
-        >>>| fun e -> Tree.of_list [e] in
-  modify_tree_raw store tree path ~f:mod_fun
+(* TODO: returns any remaining path not exisiting in store *)
+let get_remaining_path store path =
 
 let get_hash_at_path store tree path =
   let module Tree = Store.Value.Tree in
@@ -124,6 +114,7 @@ let get_hash_at_path store tree path =
         >>== aux xs in
   aux path_segs tree
 
+(* TODO: fix using newly created functions to allow subdirs *)
 let add_hash_to_tree store tree path hash =
   let module Tree = Store.Value.Tree in
   match get_last @@ Git.Path.segs path with

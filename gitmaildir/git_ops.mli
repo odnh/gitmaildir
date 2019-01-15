@@ -19,11 +19,6 @@ val modify_tree : Store.t -> Store.Hash.t -> Git.Path.t
                   -> f:(Store.Value.Tree.t -> Store.Value.Tree.t)
                   -> (Store.Hash.t, error) result Lwt.t
 
-(** modify_tree expecept if path is deeper than the tree, it extends the tree *)
-val modify_tree_extend : Store.t -> Store.Hash.t -> Git.Path.t
-                  -> f:(Store.Value.Tree.t -> Store.Value.Tree.t)
-                  -> (Store.Hash.t, error) result Lwt.t
-
 (** Inserts hash at point given by path in tree (will fail if intermediate dirs do not exist) *)
 val add_hash_to_tree : Store.t -> Store.Hash.t -> Git.Path.t -> Store.Hash.t
                       -> (Store.Hash.t, error) result Lwt.t
