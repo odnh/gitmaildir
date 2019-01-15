@@ -91,7 +91,6 @@ let modify_tree store tree path ~f =
           | Error e ->  Lwt.return_error e) in
   aux path_segs tree
 
-(** builds git trees down to the given path with the hash at the last position *)
 let build_subtrees store path hash =
   let module Tree = Store.Value.Tree in
   let rec aux = function
@@ -108,11 +107,10 @@ let build_subtrees store path hash =
         >>== write_value store in
   aux (Git.Path.segs path)
 
-(** returns any remaining path not exisiting in store *)
 let get_remaining_path store tree path =
   let module Tree = Store.Value.Tree in
   let rec aux tree path = match path with
-    | [] -> Lwt.return_ok @@ Git.Path.of_segs []
+    | [] -> Lwt.return_ok Git.Path.empty
     | x::xs ->
         let tree_value = read_as_tree store tree in
         let entry = tree_value >>>= entry_from_tree x in
@@ -136,14 +134,22 @@ let get_hash_at_path store tree path =
         >>== aux xs in
   aux path_segs tree
 
-(* TODO: fix using newly created functions to allow subdirs *)
 let add_hash_to_tree store tree path hash =
   let module Tree = Store.Value.Tree in
   match get_last @@ Git.Path.segs path with
   | None -> Lwt.return_error `Invalid_path
   | Some (name, loc) ->
-      let entry = Tree.entry name `Normal hash in
-      modify_tree store tree (Git.Path.of_segs loc) ~f:(fun t -> Tree.add t entry)
+      let remaining = get_remaining_path store tree (Git.Path.of_segs loc) in
+      remaining >>== fun r ->
+        if Git.Path.equal r Git.Path.empty then
+          let entry = Tree.entry name `Normal hash in
+          modify_tree store tree (Git.Path.of_segs loc) ~f:(fun t -> Tree.add t entry)
+        else
+          let subtree = build_subtrees store (Git.Path.add r name) hash in
+          let last_dir = List.rev (Git.Path.segs r) |> List.hd_exn in
+          let entry = subtree >>>| Tree.entry last_dir `Normal in
+          entry >>== fun e ->
+            modify_tree store tree (Git.Path.of_segs loc) ~f:(fun t -> Tree.add t e)
 
 let remove_entry_from_tree store tree path =
   let module Tree = Store.Value.Tree in
