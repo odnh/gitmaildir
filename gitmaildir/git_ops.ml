@@ -101,7 +101,7 @@ let build_subtrees store path hash =
         write_value store (tree |> Store.Value.tree)
     | x::xs ->
         let sub_tree = aux xs in
-        let entry = sub_tree >>>| Tree.entry x `Normal in
+        let entry = sub_tree >>>| Tree.entry x `Dir in
         let tree = entry >>>| (fun e -> Tree.of_list [e]) in
         tree >>>| Store.Value.tree
         >>== write_value store in
@@ -116,7 +116,9 @@ let get_remaining_path store tree path =
         let entry = tree_value >>>= entry_from_tree x in
         entry >>= function
           | Error `No_entry_in_tree -> Lwt.return_ok (Git.Path.of_segs (x::xs))
-          | Ok e -> aux e.Tree.node xs
+          | Ok e -> 
+              if e.Tree.perm = `Dir then aux e.Tree.node xs
+              else Lwt.return_ok (Git.Path.of_segs (x::xs))
           | Error e -> Lwt.return_error e in
   aux tree (Git.Path.segs path)
   
@@ -146,10 +148,12 @@ let add_hash_to_tree store tree path hash =
           modify_tree store tree (Git.Path.of_segs loc) ~f:(fun t -> Tree.add t entry)
         else
           let subtree = build_subtrees store (Git.Path.add r name) hash in
-          let last_dir = List.rev (Git.Path.segs r) |> List.hd_exn in
-          let entry = subtree >>>| Tree.entry last_dir `Normal in
+          let first_new_dir = Git.Path.segs r |> List.hd_exn in
+          let existing_dirs = List.take loc
+            ((List.length loc) - (List.length (Git.Path.segs r))) |> Git.Path.of_segs in
+          let entry = subtree >>>| Tree.entry first_new_dir `Dir in
           entry >>== fun e ->
-            modify_tree store tree (Git.Path.of_segs loc) ~f:(fun t -> Tree.add t e)
+            modify_tree store tree existing_dirs ~f:(fun t -> Tree.add t e)
 
 let remove_entry_from_tree store tree path =
   let module Tree = Store.Value.Tree in

@@ -71,6 +71,16 @@ let delete_info =
 
 let delete_t = Term.(const delete $ store_arg $ delete_path_arg)
 
+(* init command *)
+
+let init _ = ()
+
+let init_info =
+  let doc = "Initialise a gitmaildir" in
+  Term.info "init" ~doc ~exits:Term.default_exits
+
+let init_t = Term.(const init $ store_arg)
+
 (* gitmaildir command *)
 
 let gitmaildir_info =
@@ -85,6 +95,6 @@ let gitmaildir_t =
   Term.(const ())
 
 let multi_command = Term.eval_choice (gitmaildir_t, gitmaildir_info)
-  [deliver_t, deliver_info; move_t, move_info; delete_t, delete_info]
+  [deliver_t, deliver_info; move_t, move_info; delete_t, delete_info; init_t, init_info]
 
 let () = Term.exit @@ multi_command
