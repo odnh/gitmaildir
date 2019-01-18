@@ -136,24 +136,13 @@ let get_hash_at_path store tree path =
         >>== aux xs in
   aux path_segs tree
 
-let add_hash_to_tree store tree path hash =
+let add_blob_to_tree store tree path hash =
   let module Tree = Store.Value.Tree in
   match get_last @@ Git.Path.segs path with
   | None -> Lwt.return_error `Invalid_path
   | Some (name, loc) ->
-      let remaining = get_remaining_path store tree (Git.Path.of_segs loc) in
-      remaining >>== fun r ->
-        if Git.Path.equal r Git.Path.empty then
-          let entry = Tree.entry name `Normal hash in
-          modify_tree store tree (Git.Path.of_segs loc) ~f:(fun t -> Tree.add t entry)
-        else
-          let subtree = build_subtrees store (Git.Path.add r name) hash in
-          let first_new_dir = Git.Path.segs r |> List.hd_exn in
-          let existing_dirs = List.take loc
-            ((List.length loc) - (List.length (Git.Path.segs r))) |> Git.Path.of_segs in
-          let entry = subtree >>>| Tree.entry first_new_dir `Dir in
-          entry >>== fun e ->
-            modify_tree store tree existing_dirs ~f:(fun t -> Tree.add t e)
+      let entry = Tree.entry name `Normal hash in
+      modify_tree store tree (Git.Path.of_segs loc) ~f:(fun t -> Tree.add t entry)
 
 let remove_entry_from_tree store tree path =
   let module Tree = Store.Value.Tree in

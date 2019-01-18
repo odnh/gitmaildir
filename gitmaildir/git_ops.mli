@@ -26,7 +26,7 @@ val build_subtrees : Store.t -> Git.Path.t -> Store.Hash.t -> (Store.Hash.t, err
 val get_remaining_path : Store.t -> Store.Hash.t -> Git.Path.t -> (Git.Path.t, error) result Lwt.t
 
 (** Inserts hash at point given by path in tree (will fail if intermediate dirs do not exist) *)
-val add_hash_to_tree : Store.t -> Store.Hash.t -> Git.Path.t -> Store.Hash.t
+val add_blob_to_tree : Store.t -> Store.Hash.t -> Git.Path.t -> Store.Hash.t
                       -> (Store.Hash.t, error) result Lwt.t
 
 (** Removes file at path from the tree (fails in same way as add_hash_to_tree) *)
