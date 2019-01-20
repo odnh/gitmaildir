@@ -3,6 +3,8 @@ open Git_unix
 open Lwt.Infix
 open Lwt_result_helpers
 
+module Tree = Store.Value.Tree
+  
 type error = [
   | `Not_a_tree
   | `Not_a_commit
@@ -60,7 +62,6 @@ let add_blob_to_store store input =
     |> write_value store
 
 let modify_tree store tree path ~f =
-  let module Tree = Store.Value.Tree in
   let path_segs = Git.Path.segs path in
   let rec aux path tree_hash =
     match path with
@@ -91,39 +92,7 @@ let modify_tree store tree path ~f =
           | Error e ->  Lwt.return_error e) in
   aux path_segs tree
 
-let build_subtrees store path hash =
-  let module Tree = Store.Value.Tree in
-  let rec aux = function
-    | [] -> Lwt.return_error `Invalid_path
-    | x::[] ->
-        let entry = Tree.entry x `Normal hash in
-        let tree = Tree.of_list [entry] in
-        write_value store (tree |> Store.Value.tree)
-    | x::xs ->
-        let sub_tree = aux xs in
-        let entry = sub_tree >>>| Tree.entry x `Dir in
-        let tree = entry >>>| (fun e -> Tree.of_list [e]) in
-        tree >>>| Store.Value.tree
-        >>== write_value store in
-  aux (Git.Path.segs path)
-
-let get_remaining_path store tree path =
-  let module Tree = Store.Value.Tree in
-  let rec aux tree path = match path with
-    | [] -> Lwt.return_ok Git.Path.empty
-    | x::xs ->
-        let tree_value = read_as_tree store tree in
-        let entry = tree_value >>>= entry_from_tree x in
-        entry >>= function
-          | Error `No_entry_in_tree -> Lwt.return_ok (Git.Path.of_segs (x::xs))
-          | Ok e -> 
-              if e.Tree.perm = `Dir then aux e.Tree.node xs
-              else Lwt.return_ok (Git.Path.of_segs (x::xs))
-          | Error e -> Lwt.return_error e in
-  aux tree (Git.Path.segs path)
-  
 let get_hash_at_path store tree path =
-  let module Tree = Store.Value.Tree in
   let path_segs = Git.Path.segs path in
   let rec aux path tree_hash =
     match path with
@@ -136,16 +105,60 @@ let get_hash_at_path store tree path =
         >>== aux xs in
   aux path_segs tree
 
-let add_blob_to_tree store tree path hash =
-  let module Tree = Store.Value.Tree in
+let add_blob_to_tree store tree path blob =
   match get_last @@ Git.Path.segs path with
   | None -> Lwt.return_error `Invalid_path
   | Some (name, loc) ->
-      let entry = Tree.entry name `Normal hash in
+      let entry = Tree.entry name `Normal blob in
       modify_tree store tree (Git.Path.of_segs loc) ~f:(fun t -> Tree.add t entry)
 
+(* Returns a hash of a tree all the way down to a blob at the given path *)
+let rec build_subtrees store path name blob = match path with
+  | [] -> 
+      let entry = Tree.entry name `Normal blob in
+      let tree = Tree.of_list [entry] in
+      Store.Value.tree tree
+      |> write_value store
+  | x::xs ->
+      let subtree = build_subtrees store xs name blob in
+      let entry = subtree >>>| Tree.entry x `Dir in
+      let tree = entry >>>| (fun e -> Tree.of_list [e]) in
+      tree >>>| Store.Value.tree
+      >>== write_value store
+      
+let add_blob_to_tree_extend store tree path blob =
+  let rec aux (name, loc) tree_hash = match loc with
+    | [] ->
+        let entry = Tree.entry name `Normal blob in
+        read_as_tree store tree_hash
+        >>>| (fun t -> Tree.add t entry)
+        >>>| Store.Value.tree
+        >>== write_value store
+    | x::xs -> 
+        let current_tree = read_as_tree store tree_hash in
+        let subtree_entry = current_tree >>>= entry_from_tree x in
+        subtree_entry >>= function
+          | Error `No_entry_in_tree -> build_subtrees store (x::xs) name blob
+          | Error e -> Lwt.return_error e
+          | Ok entry ->
+              let new_subtree_hash = aux (name, xs) entry.Tree.node in
+              let new_subtree_entry = 
+                new_subtree_hash >>>| Tree.entry entry.Tree.name entry.Tree.perm in
+              let new_tree = current_tree
+              >>>| Tree.remove ~name:x
+              >>= (function
+                | Ok t -> new_subtree_entry >>>| Tree.add t
+                | Error e -> Lwt.return_error e) in
+              new_tree >>>| Store.Value.tree
+              >>= (function
+                | Ok v -> write_value store v
+                | Error e ->  Lwt.return_error e) in
+  match get_last @@ Git.Path.segs path with
+  | None -> Lwt.return_error `Invalid_path
+  | Some p -> aux p tree
+
+
 let remove_entry_from_tree store tree path =
-  let module Tree = Store.Value.Tree in
   match get_last @@ Git.Path.segs path with
   | None -> Lwt.return_error `Invalid_path
   | Some (name, loc) ->
