@@ -97,8 +97,10 @@ let add_t = Term.(const add $ store_arg $ add_path_arg)
 let convert store path =
   let store = Git_ops.store_of_string store in
   let path = Fpath.v path in
+  let init_lwt = store >>== (fun s -> Maildir.init_gitmaildir s) in
   let convert_lwt = store >>== (fun s -> Maildir.convert_maildir s path) in
-  match Lwt_main.run convert_lwt with
+  let both_lwt = init_lwt >>== (fun _ -> convert_lwt) in
+  match Lwt_main.run both_lwt with
   | Ok _ -> ()
   | Error _ -> failwith "ERROR"
 

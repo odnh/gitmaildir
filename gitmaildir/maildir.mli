@@ -12,5 +12,8 @@ val delete_mail : Git_unix.Store.t -> Fpath.t -> (unit, Git_ops.error) result Lw
 (** adds an email at any specified path *)
 val add_mail : Git_unix.Store.t -> Fpath.t -> In_channel.t -> (unit, Git_ops.error) result Lwt.t
 
+(** inits a gitmaildir (ie empty git repository with initial commit) *)
+val init_gitmaildir : Git_unix.Store.t -> (unit, Git_ops.error) result Lwt.t
+
 (** converts an existing maildir to a gitmaildir *)
 val convert_maildir : Git_unix.Store.t -> Fpath.t -> (unit, Git_ops.error) result Lwt.t

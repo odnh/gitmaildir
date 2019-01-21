@@ -12,7 +12,7 @@ val add_blob_to_store : Store.t -> in_channel -> (Store.Hash.t, error) result Lw
 val get_master_commit : Store.t -> (Store.Hash.t, error) result Lwt.t
 
 (** Commit the given tree with the given parent *)
-val commit_tree : Store.t -> Store.Hash.t -> string -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+val commit_tree : Store.t -> Store.Hash.t list -> string -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
 
 (** Modifies subtree at path using given function *)
 val modify_tree : Store.t -> Store.Hash.t -> Git.Path.t
@@ -49,3 +49,6 @@ val get_hash_at_path : Store.t -> Store.Hash.t -> Git.Path.t
 
 (** Replaces the contents of the given path with the tree at the given commit *)
 val checkout_to_dir : Store.t -> Store.Hash.t -> Fpath.t -> (unit, error) result Lwt.t
+
+(** creates a single commit of an empty blob in a new git directory *)
+val init_empty_blob : Store.t -> (unit, error) result Lwt.t

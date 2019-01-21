@@ -164,11 +164,11 @@ let remove_entry_from_tree store tree path =
   | Some (name, loc) ->
       modify_tree store tree (Git.Path.of_segs loc) ~f:(Tree.remove ~name)
 
-let commit_tree store parent message tree =
+let commit_tree store parents message tree =
   let user = get_user () in
   let message = "\n" ^ message ^ "\n" in
   Store.Value.Commit.make ~tree:tree ~author:user
-    ~committer:user message ~parents:[parent]
+    ~committer:user message ~parents:parents
   |> Store.Value.commit
   |> write_value store
 
@@ -206,3 +206,13 @@ let get_commit_tree store commit =
 
 let checkout_to_dir _ _ _ =
     Lwt.return_ok ()
+
+let init_empty_blob store =
+  let blob = Store.Value.Blob.of_string "" |> Store.Value.blob in
+  write_value store blob
+  >>>| (fun h -> Tree.of_list [Tree.entry ".keep" `Normal h])
+  >>>| Store.Value.tree
+  >>== write_value store
+  >>== commit_tree store [] "init"
+  >>== update_ref store Git.Reference.master
+
