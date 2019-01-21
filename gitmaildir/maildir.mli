@@ -9,5 +9,8 @@ val move_mail : Git_unix.Store.t -> Fpath.t -> Fpath.t -> (unit, Git_ops.error) 
 (** removes the given mail from the current tree *)
 val delete_mail : Git_unix.Store.t -> Fpath.t -> (unit, Git_ops.error) result Lwt.t
 
+(** adds an email at any specified path *)
+val add_mail : Git_unix.Store.t -> Fpath.t -> In_channel.t -> (unit, Git_ops.error) result Lwt.t
+
 (** given a path, initialises a gitmaildir in it *)
 val init_dir : Fpath.t -> (unit, Git_ops.error) result Lwt.t

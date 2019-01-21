@@ -71,6 +71,27 @@ let delete_info =
 
 let delete_t = Term.(const delete $ store_arg $ delete_path_arg)
 
+(* add command *)
+
+let add store path =
+  let store = Git_ops.store_of_string store in
+  let path = Fpath.v path in
+  let input = In_channel.stdin in
+  let add_lwt = store >>== (fun s -> Maildir.add_mail s path input) in
+  match Lwt_main.run add_lwt with
+  | Ok _ -> ()
+  | Error _ -> failwith "ERROR"
+  
+let add_path_arg =
+  let doc = "path of where to add mail" in
+  Arg.(required & pos 1 (some string) None & info [] ~docv:"PATH" ~doc)
+
+let add_info =
+  let doc = "Add a mail to an arbitrary location in the gitmaildir" in
+  Term.info "add" ~doc ~exits:Term.default_exits
+
+let add_t = Term.(const add $ store_arg $ add_path_arg)
+
 (* init command *)
 
 let init _ = ()
@@ -95,6 +116,11 @@ let gitmaildir_t =
   Term.(const ())
 
 let multi_command = Term.eval_choice (gitmaildir_t, gitmaildir_info)
-  [deliver_t, deliver_info; move_t, move_info; delete_t, delete_info; init_t, init_info]
+  [ deliver_t, deliver_info;
+    move_t, move_info;
+    delete_t, delete_info;
+    add_t, add_info;
+    init_t, init_info
+  ]
 
 let () = Term.exit @@ multi_command
