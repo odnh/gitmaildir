@@ -61,20 +61,20 @@ let convert_maildir store path =
         |> Array.to_list
         |> List.map ~f:(Filename.concat f)
         |> List.append fs
-        |> loop result
-    | f::fs -> loop (f::result) fs
+        |> get_all_files result
+    | f::fs -> get_all_files (f::result) fs
     | [] -> result in
   let maildir_root_length = Fpath.segs path |> List.length in
   let all_files = get_all_files [] [Fpath.to_string path] in
   all_files |> List.map ~f:(fun f -> f, (Unix.stat f).st_mtime)
-  |> List.sort ~compare:(fun (f1,t1) (f2,t2) -> Float.compare t1 t2)
+  |> List.sort ~compare:(fun (_,t1) (_,t2) -> Float.compare t1 t2)
   |> List.map ~f:(fun (f,t) ->
-      ((Fpath.v f).segs
-        |> List.drop maildir_root_length
-        |> String.concat_array ~sep:Fpath.dir_sep 
+      (Fpath.(v f |> segs)
+        |> (fun l -> List.drop l maildir_root_length)
+        |> String.concat ~sep:Fpath.dir_sep 
       , f, t))
-  |> List.fold ~init:(Ok ()) ~f:(
-    fun acc (f1, f2, t) ->
+  |> List.fold ~init:(Lwt.return_ok ()) ~f:(
+    fun acc (f1, f2, _) ->
       let input = In_channel.create f2 in
-      acc >>== add_mail store f1 f2
-      >>>| (fun x -> In_channel.close; x))
+      acc >>== (fun () -> add_mail store (Fpath.v f1) input)
+      >>>| (fun x -> In_channel.close input; x))

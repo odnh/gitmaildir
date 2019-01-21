@@ -94,13 +94,23 @@ let add_t = Term.(const add $ store_arg $ add_path_arg)
 
 (* convert command *)
 
-let convert _ = ()
+let convert store path =
+  let store = Git_ops.store_of_string store in
+  let path = Fpath.v path in
+  let convert_lwt = store >>== (fun s -> Maildir.convert_maildir s path) in
+  match Lwt_main.run convert_lwt with
+  | Ok _ -> ()
+  | Error _ -> failwith "ERROR"
+
+let convert_path_arg = 
+  let doc = "Path of maildir to convert" in
+  Arg.(required & pos 1 (some string) None & info [] ~docv:"PATH" ~doc)
 
 let convert_info =
   let doc = "Convert a maildir to a gitmaildir" in
-  Term.info "init" ~doc ~exits:Term.default_exits
+  Term.info "convert" ~doc ~exits:Term.default_exits
 
-let convert_t = Term.(const convert $ store_arg)
+let convert_t = Term.(const convert $ store_arg $ convert_path_arg)
 
 (* gitmaildir command *)
 
