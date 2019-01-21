@@ -102,15 +102,19 @@ let convert store path =
   | Ok _ -> ()
   | Error _ -> failwith "ERROR"
 
+let convert_store_arg = 
+  let doc = "Path of directory to become new gitmaildir" in
+  Arg.(required & pos 1 (some string) None & info [] ~docv:"GIT_PATH" ~doc)
+
 let convert_path_arg = 
   let doc = "Path of maildir to convert" in
-  Arg.(required & pos 1 (some string) None & info [] ~docv:"PATH" ~doc)
+  Arg.(required & pos 1 (some string) None & info [] ~docv:"MAILDIR_PATH" ~doc)
 
 let convert_info =
   let doc = "Convert a maildir to a gitmaildir" in
   Term.info "convert" ~doc ~exits:Term.default_exits
 
-let convert_t = Term.(const convert $ store_arg $ convert_path_arg)
+let convert_t = Term.(const convert $ convert_store_arg $ convert_path_arg)
 
 (* gitmaildir command *)
 
