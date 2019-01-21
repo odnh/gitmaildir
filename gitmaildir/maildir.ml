@@ -54,4 +54,4 @@ let add_mail store path input =
   |> lwt_result_bind2 (fun a b -> commit_tree store a "deliver mail" b) master_commit
   >>== update_ref store master_ref
 
-let init_dir _ = Lwt.return_ok ()
+let convert_maildir _ = Lwt.return_ok ()

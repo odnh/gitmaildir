@@ -92,15 +92,15 @@ let add_info =
 
 let add_t = Term.(const add $ store_arg $ add_path_arg)
 
-(* init command *)
+(* convert command *)
 
-let init _ = ()
+let convert _ = ()
 
-let init_info =
-  let doc = "Initialise a gitmaildir" in
+let convert_info =
+  let doc = "Convert a maildir to a gitmaildir" in
   Term.info "init" ~doc ~exits:Term.default_exits
 
-let init_t = Term.(const init $ store_arg)
+let convert_t = Term.(const convert $ store_arg)
 
 (* gitmaildir command *)
 
@@ -120,7 +120,7 @@ let multi_command = Term.eval_choice (gitmaildir_t, gitmaildir_info)
     move_t, move_info;
     delete_t, delete_info;
     add_t, add_info;
-    init_t, init_info
+    convert_t, convert_info
   ]
 
 let () = Term.exit @@ multi_command
