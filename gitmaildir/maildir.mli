@@ -13,4 +13,4 @@ val delete_mail : Git_unix.Store.t -> Fpath.t -> (unit, Git_ops.error) result Lw
 val add_mail : Git_unix.Store.t -> Fpath.t -> In_channel.t -> (unit, Git_ops.error) result Lwt.t
 
 (** converts an existing maildir to a gitmaildir *)
-val convert_maildir : Fpath.t -> (unit, Git_ops.error) result Lwt.t
+val convert_maildir : Git_unix.Store.t -> Fpath.t -> (unit, Git_ops.error) result Lwt.t

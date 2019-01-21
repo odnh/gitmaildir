@@ -54,4 +54,27 @@ let add_mail store path input =
   |> lwt_result_bind2 (fun a b -> commit_tree store a "deliver mail" b) master_commit
   >>== update_ref store master_ref
 
-let convert_maildir _ = Lwt.return_ok ()
+let convert_maildir store path =
+  let rec get_all_files result = function
+    | f::fs when Sys.is_directory f = `Yes ->
+        Sys.readdir f
+        |> Array.to_list
+        |> List.map ~f:(Filename.concat f)
+        |> List.append fs
+        |> loop result
+    | f::fs -> loop (f::result) fs
+    | [] -> result in
+  let maildir_root_length = Fpath.segs path |> List.length in
+  let all_files = get_all_files [] [Fpath.to_string path] in
+  all_files |> List.map ~f:(fun f -> f, (Unix.stat f).st_mtime)
+  |> List.sort ~compare:(fun (f1,t1) (f2,t2) -> Float.compare t1 t2)
+  |> List.map ~f:(fun (f,t) ->
+      ((Fpath.v f).segs
+        |> List.drop maildir_root_length
+        |> String.concat_array ~sep:Fpath.dir_sep 
+      , f, t))
+  |> List.fold ~init:(Ok ()) ~f:(
+    fun acc (f1, f2, t) ->
+      let input = In_channel.create f2 in
+      acc >>== add_mail store f1 f2
+      >>>| (fun x -> In_channel.close; x))
