@@ -138,7 +138,18 @@ let add_blob_to_tree_extend store tree path blob =
         let current_tree = read_as_tree store tree_hash in
         let subtree_entry = current_tree >>>= entry_from_tree x in
         subtree_entry >>= function
-          | Error `No_entry_in_tree -> build_subtrees store (x::xs) name blob
+          | Error `No_entry_in_tree ->
+              let new_subtree_hash = build_subtrees store xs name blob in
+              let new_subtree_entry = 
+                new_subtree_hash >>>| Tree.entry x `Dir in
+              let new_tree = current_tree
+              >>= (function
+                | Ok t -> new_subtree_entry >>>| Tree.add t
+                | Error e -> Lwt.return_error e) in
+              new_tree >>>| Store.Value.tree
+              >>= (function
+                | Ok v -> write_value store v
+                | Error e ->  Lwt.return_error e)
           | Error e -> Lwt.return_error e
           | Ok entry ->
               let new_subtree_hash = aux (name, xs) entry.Tree.node in
