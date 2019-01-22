@@ -44,15 +44,17 @@ let move_mail store path new_path =
   |> lwt_result_bind2 (fun a b -> commit_tree store [a] "move mail" b) master_commit
   >>== update_ref store master_ref
 
-let add_mail store path input =
+let add_mail_time time store path input =
   let path = Git.Path.v (Fpath.to_string path) in
   let master_ref = Git.Reference.master in
   let master_commit = get_master_commit store in
   let master_tree = master_commit >>== get_commit_tree store in
   add_blob_to_store store input
   |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a path b) master_tree
-  |> lwt_result_bind2 (fun a b -> commit_tree store [a] "deliver mail" b) master_commit
+  |> lwt_result_bind2 (fun a b -> commit_tree ~time store [a] "deliver mail" b) master_commit
   >>== update_ref store master_ref
+
+let add_mail = add_mail_time (Unix.time ())
 
 let init_gitmaildir store =
   Git_ops.init_empty_blob store
@@ -77,7 +79,7 @@ let convert_maildir store path =
         |> String.concat ~sep:Fpath.dir_sep 
       , f, t))
   |> List.fold ~init:(Lwt.return_ok ()) ~f:(
-    fun acc (f1, f2, _) ->
+    fun acc (f1, f2, t) ->
       let input = In_channel.create f2 in
-      acc >>== (fun () -> add_mail store (Fpath.v f1) input)
+      acc >>== (fun () -> add_mail_time t store (Fpath.v f1) input)
       >>>| (fun x -> In_channel.close input; x))
