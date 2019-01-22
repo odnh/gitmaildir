@@ -39,11 +39,11 @@ let move store path new_path =
   
 let move_path_arg =
   let doc = "current path of file to move" in
-  Arg.(required & pos 1 (some string) None & info [] ~docv:"SRC" ~doc)
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"SRC" ~doc)
 
 let move_new_path_arg =
   let doc = "path to move file to" in
-  Arg.(required & pos 2 (some string) None & info [] ~docv:"DEST" ~doc)
+  Arg.(required & pos 1 (some string) None & info [] ~docv:"DEST" ~doc)
 
 let move_info =
   let doc = "Move a file in the gitmaildir" in
@@ -63,7 +63,7 @@ let delete store path =
   
 let delete_path_arg =
   let doc = "path of file to delete" in
-  Arg.(required & pos 1 (some string) None & info [] ~docv:"PATH" ~doc)
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"PATH" ~doc)
 
 let delete_info =
   let doc = "Delete a file in the gitmaildir" in
@@ -84,7 +84,7 @@ let add store path =
   
 let add_path_arg =
   let doc = "path of where to add mail" in
-  Arg.(required & pos 1 (some string) None & info [] ~docv:"PATH" ~doc)
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"PATH" ~doc)
 
 let add_info =
   let doc = "Add a mail to an arbitrary location in the gitmaildir" in
@@ -95,18 +95,22 @@ let add_t = Term.(const add $ store_arg $ add_path_arg)
 (* convert command *)
 
 let convert store path =
+  print_endline @@ "STORE: " ^ store;
+  print_endline @@ "PATH: " ^ path;
   let store = Git_ops.store_of_string store in
   let path = Fpath.v path in
   let init_lwt = store >>== (fun s -> Maildir.init_gitmaildir s) in
-  let convert_lwt = store >>== (fun s -> Maildir.convert_maildir s path) in
-  let both_lwt = init_lwt >>== (fun _ -> convert_lwt) in
-  match Lwt_main.run both_lwt with
+  (match Lwt_main.run init_lwt with
   | Ok _ -> ()
-  | Error _ -> failwith "ERROR"
+  | Error _ -> failwith "ERROR1");
+  let convert_lwt = store >>== (fun s -> Maildir.convert_maildir s path) in
+  match Lwt_main.run convert_lwt with
+  | Ok _ -> ()
+  | Error _ -> failwith "ERROR2"
 
 let convert_store_arg = 
   let doc = "Path of directory to become new gitmaildir" in
-  Arg.(required & pos 1 (some string) None & info [] ~docv:"GIT_PATH" ~doc)
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"GIT_PATH" ~doc)
 
 let convert_path_arg = 
   let doc = "Path of maildir to convert" in
