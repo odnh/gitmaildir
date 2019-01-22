@@ -12,7 +12,8 @@ val add_blob_to_store : Store.t -> in_channel -> (Store.Hash.t, error) result Lw
 val get_master_commit : Store.t -> (Store.Hash.t, error) result Lwt.t
 
 (** Commit the given tree with the given parent *)
-val commit_tree : Store.t -> Store.Hash.t list -> string -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+val commit_tree : ?time:float -> Store.t -> Store.Hash.t list -> string -> Store.Hash.t 
+                  ->(Store.Hash.t, error) result Lwt.t
 
 (** Modifies subtree at path using given function *)
 val modify_tree : Store.t -> Store.Hash.t -> Git.Path.t

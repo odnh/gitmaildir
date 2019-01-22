@@ -34,10 +34,10 @@ let entry_from_tree name tree =
   |> Result.of_option ~error:`No_entry_in_tree
 
 (* returns a default user with current time for commits *)
-let get_user ?time:(t = Unix.time () |> Int64.of_float) = fun () ->
+let get_user time =
   { Git.User.name = "gitmaildir";
     Git.User.email = "gitmaildir@localhost";
-    Git.User.date = (t, None) }
+    Git.User.date = (time |> Int64.of_float, None) }
 
 (** wraps Store.write to return larger error *)
 let write_value store value =
@@ -175,8 +175,8 @@ let remove_entry_from_tree store tree path =
   | Some (name, loc) ->
       modify_tree store tree (Git.Path.of_segs loc) ~f:(Tree.remove ~name)
 
-let commit_tree store parents message tree =
-  let user = get_user () in
+let commit_tree ?time:(time = Unix.time ()) store parents message tree  =
+  let user = get_user time in
   let message = "\n" ^ message ^ "\n" in
   Store.Value.Commit.make ~tree:tree ~author:user
     ~committer:user message ~parents:parents
