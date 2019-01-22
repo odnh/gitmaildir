@@ -34,10 +34,10 @@ let entry_from_tree name tree =
   |> Result.of_option ~error:`No_entry_in_tree
 
 (* returns a default user with current time for commits *)
-let get_user = fun () ->
+let get_user ?time:(t = Unix.time () |> Int64.of_float) = fun () ->
   { Git.User.name = "gitmaildir";
     Git.User.email = "gitmaildir@localhost";
-    Git.User.date = (Unix.time () |> Int64.of_float, None) }
+    Git.User.date = (t, None) }
 
 (** wraps Store.write to return larger error *)
 let write_value store value =
