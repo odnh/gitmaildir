@@ -1,24 +1,37 @@
 open Core
 
-(** delivers a new mail to the specified git store *)
-val deliver_mail : Git_unix.Store.t -> In_channel.t -> (unit, Git_ops.error) result Lwt.t
+module type S = sig
 
-(** move (ie rename) an email *)
-val move_mail : Git_unix.Store.t -> Fpath.t -> Fpath.t -> (unit, Git_ops.error) result Lwt.t
+  module Store : Git.Store.S 
 
-(** removes the given mail from the current tree *)
-val delete_mail : Git_unix.Store.t -> Fpath.t -> (unit, Git_ops.error) result Lwt.t
+  type error
 
-(** adds an email at any specified path *)
-val add_mail : Git_unix.Store.t -> Fpath.t -> In_channel.t -> (unit, Git_ops.error) result Lwt.t
+  (** delivers a new mail to the specified git store *)
+  val deliver_mail : Store.t -> In_channel.t -> (unit, error) result Lwt.t
 
-(** inits a gitmaildir (ie empty git repository with initial commit) *)
-val init_gitmaildir : Git_unix.Store.t -> (unit, Git_ops.error) result Lwt.t
+  (** move (ie rename) an email *)
+  val move_mail : Store.t -> Fpath.t -> Fpath.t -> (unit, error) result Lwt.t
 
-(** converts an existing maildir to a gitmaildir *)
-val convert_maildir : Git_unix.Store.t -> Fpath.t -> (unit, Git_ops.error) result Lwt.t
+  (** removes the given mail from the current tree *)
+  val delete_mail : Store.t -> Fpath.t -> (unit, error) result Lwt.t
 
-val generate_plain_branch : Git_unix.Store.t -> (unit, Git_ops.error) result Lwt.t
+  (** adds an email at any specified path *)
+  val add_mail : Store.t -> Fpath.t -> In_channel.t -> (unit, error) result Lwt.t
 
-val deliver_plain : Git_unix.Store.t -> In_channel.t -> (unit, Git_ops.error) result Lwt.t
+  (** inits a gitmaildir (ie empty git repository with initial commit) *)
+  val init_gitmaildir : Store.t -> (unit, error) result Lwt.t
 
+  (** converts an existing maildir to a gitmaildir *)
+  val convert_maildir : Store.t -> Fpath.t -> (unit, error) result Lwt.t
+
+  val generate_plain_branch : Store.t -> (unit, error) result Lwt.t
+
+  val deliver_plain : Store.t -> In_channel.t -> (unit, error) result Lwt.t
+end
+
+module Make (G : Git_ops.S) : sig
+  include
+    S 
+    with module Store = G.Store
+    and type error := G.error
+end

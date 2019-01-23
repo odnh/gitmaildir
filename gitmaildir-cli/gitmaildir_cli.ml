@@ -1,15 +1,24 @@
 open Core
 open Cmdliner
-open Gitmaildir.Lwt_result_helpers
+open Lwt.Infix
 
-module Maildir = Gitmaildir.Maildir
-module Git_ops = Gitmaildir.Git_ops
+module Store = Git.Store.Make(Digestif.SHA1)(Git_unix.Fs)(Git.Inflate)(Git.Deflate)
+module Git_ops = Gitmaildir.Git_ops.Make(Store)
+module Maildir = Gitmaildir.Maildir.Make(Git_ops) 
+
+let lift_error err = (err :> Git_ops.error)
+
+let store_of_string path =
+  Store.v () Fpath.(v path)
+  >|= function
+    | Ok s -> s
+    | Error _ -> failwith "Bad Store"
 
 (* deliver command *)
 
 let deliver store =
-  let store = Gitmaildir.Git_ops.store_of_string store in
-  let deliver_lwt = store >>== (fun s -> Maildir.deliver_mail s In_channel.stdin) in
+  let store = store_of_string store in
+  let deliver_lwt = store >>= (fun s -> Maildir.deliver_mail s In_channel.stdin) in
   match Lwt_main.run deliver_lwt with
   | Ok _ -> ()
   | Error _ -> failwith "ERROR"
@@ -29,10 +38,10 @@ let deliver_t = Term.(const deliver $ store_arg)
 (* move command *)
 
 let move store path new_path =
-  let store = Git_ops.store_of_string store in
+  let store = store_of_string store in
   let path = Fpath.v path in
   let new_path = Fpath.v new_path in
-  let move_lwt = store >>== (fun s -> Maildir.move_mail s path new_path) in
+  let move_lwt = store >>= (fun s -> Maildir.move_mail s path new_path) in
   match Lwt_main.run move_lwt with
   | Ok _ -> ()
   | Error _ -> failwith "ERROR"
@@ -54,9 +63,9 @@ let move_t = Term.(const move $ store_arg $ move_path_arg $ move_new_path_arg)
 (* delete command *)
 
 let delete store path =
-  let store = Git_ops.store_of_string store in
+  let store = store_of_string store in
   let path = Fpath.v path in
-  let delete_lwt = store >>== (fun s -> Maildir.delete_mail s path) in
+  let delete_lwt = store >>= (fun s -> Maildir.delete_mail s path) in
   match Lwt_main.run delete_lwt with
   | Ok _ -> ()
   | Error _ -> failwith "ERROR"
@@ -74,10 +83,10 @@ let delete_t = Term.(const delete $ store_arg $ delete_path_arg)
 (* add command *)
 
 let add store path =
-  let store = Git_ops.store_of_string store in
+  let store = store_of_string store in
   let path = Fpath.v path in
   let input = In_channel.stdin in
-  let add_lwt = store >>== (fun s -> Maildir.add_mail s path input) in
+  let add_lwt = store >>= (fun s -> Maildir.add_mail s path input) in
   match Lwt_main.run add_lwt with
   | Ok _ -> ()
   | Error _ -> failwith "ERROR"
@@ -97,13 +106,13 @@ let add_t = Term.(const add $ store_arg $ add_path_arg)
 let convert store path =
   print_endline @@ "STORE: " ^ store;
   print_endline @@ "PATH: " ^ path;
-  let store = Git_ops.store_of_string store in
+  let store = store_of_string store in
   let path = Fpath.v path in
-  let init_lwt = store >>== (fun s -> Maildir.init_gitmaildir s) in
+  let init_lwt = store >>= (fun s -> Maildir.init_gitmaildir s) in
   (match Lwt_main.run init_lwt with
   | Ok _ -> ()
   | Error _ -> failwith "ERROR1");
-  let convert_lwt = store >>== (fun s -> Maildir.convert_maildir s path) in
+  let convert_lwt = store >>= (fun s -> Maildir.convert_maildir s path) in
   match Lwt_main.run convert_lwt with
   | Ok _ -> ()
   | Error _ -> failwith "ERROR2"
