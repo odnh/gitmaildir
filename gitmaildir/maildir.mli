@@ -17,3 +17,8 @@ val init_gitmaildir : Git_unix.Store.t -> (unit, Git_ops.error) result Lwt.t
 
 (** converts an existing maildir to a gitmaildir *)
 val convert_maildir : Git_unix.Store.t -> Fpath.t -> (unit, Git_ops.error) result Lwt.t
+
+val generate_plain_branch : Git_unix.Store.t -> (unit, Git_ops.error) result Lwt.t
+
+val deliver_plain : Git_unix.Store.t -> In_channel.t -> (unit, Git_ops.error) result Lwt.t
+

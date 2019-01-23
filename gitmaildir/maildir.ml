@@ -76,10 +76,19 @@ let convert_maildir store path =
   |> List.map ~f:(fun (f,t) ->
       (Fpath.(v f |> segs)
         |> (fun l -> List.drop l maildir_root_length)
-        |> String.concat ~sep:Fpath.dir_sep 
+        |> String.concat ~sep:Fpath.dir_sep
       , f, t))
   |> List.fold ~init:(Lwt.return_ok ()) ~f:(
     fun acc (f1, f2, t) ->
       let input = In_channel.create f2 in
       acc >>== (fun () -> add_mail_time t store (Fpath.v f1) input)
       >>>| (fun x -> In_channel.close input; x))
+
+
+(* TODO: implement *)
+let generate_plain_branch _ =
+  Lwt.return_ok ()
+
+(* TODO: implement *)
+let deliver_plain _ _ =
+  Lwt.return_ok ()

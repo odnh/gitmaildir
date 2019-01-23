@@ -12,8 +12,10 @@ type error = [
   | `Invalid_path
   | Store.error ]
 
+(** for lifting Store.error up to Git.ops.error *)
 let lift_error err = (err :> error)
 
+(** Returns the last item of a list and the rest of the list *)
 let get_last l =
   let rev = List.rev l in
   (List.hd rev, Option.map (List.tl rev) ~f:List.rev)
