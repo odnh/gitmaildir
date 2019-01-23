@@ -8,9 +8,6 @@ val store_of_string : string -> (Store.t, error) result Lwt.t
 (** Add new blob to store *)
 val add_blob_to_store : Store.t -> in_channel -> (Store.Hash.t, error) result Lwt.t
 
-(** Get top level git tree for reference *)
-val get_master_commit : Store.t -> (Store.Hash.t, error) result Lwt.t
-
 (** Commit the given tree with the given parent *)
 val commit_tree : ?time:float -> Store.t -> Store.Hash.t list -> string -> Store.Hash.t 
                   ->(Store.Hash.t, error) result Lwt.t
@@ -32,11 +29,20 @@ val add_blob_to_tree_extend : Store.t -> Store.Hash.t -> Git.Path.t -> Store.Has
 val remove_entry_from_tree : Store.t -> Store.Hash.t -> Git.Path.t
                              -> (Store.Hash.t, error) result Lwt.t
 
+(** makes a ref at from the given path *)
+val make_ref : Git.Path.t -> Git.Reference.t
+
 (** Follows reference until returning the final hash pointed to *)
 val hash_of_ref : Store.t -> Git.Reference.t -> (Store.Hash.t, error) result Lwt.t
 
 (** Updates the ref to the given hash in the store *)
 val update_ref : Store.t -> Git.Reference.t -> Store.Hash.t -> (unit, error) result Lwt.t
+
+(** Get git commit at head of master *)
+val get_master_commit : Store.t -> (Store.Hash.t, error) result Lwt.t
+
+(** Get git commit at head of reference *)
+val get_branch_commit : Store.t -> Git.Reference.t -> (Store.Hash.t, error) result Lwt.t
 
 (** Returns a list of the parents of the given commit *)
 val get_commit_parents : Store.t -> Store.Hash.t -> (Store.Hash.t list, error) result Lwt.t

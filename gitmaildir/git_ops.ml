@@ -4,7 +4,7 @@ open Lwt.Infix
 open Lwt_result_helpers
 
 module Tree = Store.Value.Tree
-  
+
 type error = [
   | `Not_a_tree
   | `Not_a_commit
@@ -19,7 +19,7 @@ let get_last l =
   (List.hd rev, Option.map (List.tl rev) ~f:List.rev)
   |> option_pair
 
-(** returns and Some Tree if is a tree and Error otherwise *)
+(** returns an error unless value is a tree *)
 let read_as_tree store hash =
   let data = Store.read store hash in
   let match_tree = (function
@@ -33,7 +33,7 @@ let entry_from_tree name tree =
   |> List.find ~f:(fun e -> e.Store.Value.Tree.name = name)
   |> Result.of_option ~error:`No_entry_in_tree
 
-(* returns a default user with current time for commits *)
+(** returns a default user with current time for commits *)
 let get_user time =
   { Git.User.name = "gitmaildir";
     Git.User.email = "gitmaildir@localhost";
@@ -114,7 +114,7 @@ let add_blob_to_tree store tree path blob =
 
 (* Returns a hash of a tree all the way down to a blob at the given path *)
 let rec build_subtrees store path name blob = match path with
-  | [] -> 
+  | [] ->
       let entry = Tree.entry name `Normal blob in
       let tree = Tree.of_list [entry] in
       Store.Value.tree tree
@@ -125,7 +125,7 @@ let rec build_subtrees store path name blob = match path with
       let tree = entry >>>| (fun e -> Tree.of_list [e]) in
       tree >>>| Store.Value.tree
       >>== write_value store
-      
+
 let add_blob_to_tree_extend store tree path blob =
   let rec aux (name, loc) tree_hash = match loc with
     | [] ->
@@ -134,13 +134,13 @@ let add_blob_to_tree_extend store tree path blob =
         >>>| (fun t -> Tree.add t entry)
         >>>| Store.Value.tree
         >>== write_value store
-    | x::xs -> 
+    | x::xs ->
         let current_tree = read_as_tree store tree_hash in
         let subtree_entry = current_tree >>>= entry_from_tree x in
         subtree_entry >>= function
           | Error `No_entry_in_tree ->
               let new_subtree_hash = build_subtrees store xs name blob in
-              let new_subtree_entry = 
+              let new_subtree_entry =
                 new_subtree_hash >>>| Tree.entry x `Dir in
               let new_tree = current_tree
               >>= (function
@@ -153,7 +153,7 @@ let add_blob_to_tree_extend store tree path blob =
           | Error e -> Lwt.return_error e
           | Ok entry ->
               let new_subtree_hash = aux (name, xs) entry.Tree.node in
-              let new_subtree_entry = 
+              let new_subtree_entry =
                 new_subtree_hash >>>| Tree.entry entry.Tree.name entry.Tree.perm in
               let new_tree = current_tree
               >>>| Tree.remove ~name:x
@@ -168,7 +168,6 @@ let add_blob_to_tree_extend store tree path blob =
   | None -> Lwt.return_error `Invalid_path
   | Some p -> aux p tree
 
-
 let remove_entry_from_tree store tree path =
   match get_last @@ Git.Path.segs path with
   | None -> Lwt.return_error `Invalid_path
@@ -182,6 +181,9 @@ let commit_tree ?time:(time = Unix.time ()) store parents message tree  =
     ~committer:user message ~parents:parents
   |> Store.Value.commit
   |> write_value store
+
+let make_ref path =
+  Git.Reference.of_path path
 
 let hash_of_ref store ref =
   let rec aux ref =
@@ -200,6 +202,9 @@ let update_ref store ref hash =
 
 let get_master_commit store =
   hash_of_ref store Git.Reference.master
+
+let get_branch_commit store branch_ref =
+  hash_of_ref store branch_ref
 
 let get_commit_parents store commit =
   read_value store commit
@@ -226,4 +231,3 @@ let init_empty_blob store =
   >>== write_value store
   >>== commit_tree store [] "init"
   >>== update_ref store Git.Reference.master
-
