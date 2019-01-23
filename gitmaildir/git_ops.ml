@@ -10,7 +10,7 @@ module type S = sig
 
   val add_blob_to_store : Store.t -> In_channel.t -> (Store.Hash.t, error) result Lwt.t
 
-  val commit_tree : ?time:float -> Store.t -> Store.Hash.t list -> string -> Store.Hash.t 
+  val commit_tree : ?time:float -> Store.t -> Store.Hash.t list -> string -> Store.Hash.t
                     ->(Store.Hash.t, error) result Lwt.t
 
   val modify_tree : Store.t -> Store.Hash.t -> Git.Path.t

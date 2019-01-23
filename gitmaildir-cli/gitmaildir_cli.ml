@@ -4,7 +4,7 @@ open Lwt.Infix
 
 module Store = Git.Store.Make(Digestif.SHA1)(Git_unix.Fs)(Git.Inflate)(Git.Deflate)
 module Git_ops = Gitmaildir.Git_ops.Make(Store)
-module Maildir = Gitmaildir.Maildir.Make(Git_ops) 
+module Maildir = Gitmaildir.Maildir.Make(Git_ops)
 
 let lift_error err = (err :> Git_ops.error)
 
@@ -45,7 +45,7 @@ let move store path new_path =
   match Lwt_main.run move_lwt with
   | Ok _ -> ()
   | Error _ -> failwith "ERROR"
-  
+
 let move_path_arg =
   let doc = "current path of file to move" in
   Arg.(required & pos 0 (some string) None & info [] ~docv:"SRC" ~doc)
@@ -69,7 +69,7 @@ let delete store path =
   match Lwt_main.run delete_lwt with
   | Ok _ -> ()
   | Error _ -> failwith "ERROR"
-  
+
 let delete_path_arg =
   let doc = "path of file to delete" in
   Arg.(required & pos 0 (some string) None & info [] ~docv:"PATH" ~doc)
@@ -90,7 +90,7 @@ let add store path =
   match Lwt_main.run add_lwt with
   | Ok _ -> ()
   | Error _ -> failwith "ERROR"
-  
+
 let add_path_arg =
   let doc = "path of where to add mail" in
   Arg.(required & pos 0 (some string) None & info [] ~docv:"PATH" ~doc)
@@ -117,11 +117,11 @@ let convert store path =
   | Ok _ -> ()
   | Error _ -> failwith "ERROR2"
 
-let convert_store_arg = 
+let convert_store_arg =
   let doc = "Path of directory to become new gitmaildir" in
   Arg.(required & pos 0 (some string) None & info [] ~docv:"GIT_PATH" ~doc)
 
-let convert_path_arg = 
+let convert_path_arg =
   let doc = "Path of maildir to convert" in
   Arg.(required & pos 1 (some string) None & info [] ~docv:"MAILDIR_PATH" ~doc)
 

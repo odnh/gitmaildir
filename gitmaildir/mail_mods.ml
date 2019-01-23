@@ -9,5 +9,4 @@ let to_plaintext mail =
   mail
 
 (* TODO: implement *)
-let in_same_chain _ _ =
-  false
+let in_same_chain _ _ = false
