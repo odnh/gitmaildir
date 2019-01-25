@@ -8,4 +8,4 @@ let lock l = Lf.blocking_create l
 
 let try_lock l = Lf.create l
 
-let unlock l = Unix.remove l
+let unlock l = Unix.unlink l

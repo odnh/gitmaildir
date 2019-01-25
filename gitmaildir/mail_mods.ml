@@ -1,5 +1,7 @@
 open Core
 
+module Email = Email_message.Email
+
 type t = In_channel.t
 
 let v input = input

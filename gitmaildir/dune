@@ -1,4 +1,4 @@
 (library
  (name        gitmaildir)
  (public_name gitmaildir)
- (libraries core git-unix lwt))
+ (libraries core git-unix lwt email_message))

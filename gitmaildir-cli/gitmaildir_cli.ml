@@ -14,6 +14,12 @@ let store_of_string path =
     | Ok s -> s
     | Error _ -> failwith "Bad Store"
 
+(* Must hold this lock any time we make changes to the store *)
+let global_lock store_path = Locking.v @@ store_path ^ ".lock"
+
+(* This is to redirect changes to a different branch while the directory is in use *)
+let dir_use_lock store_path = Locking.v @@ store_path ^ ".dir_in_use"
+
 (* deliver command *)
 
 let deliver store =
