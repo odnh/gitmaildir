@@ -1,5 +1,23 @@
 open Core
 
+(** The type of a module implementing locking *)
+module type Locking = sig
+  (** the type of a lock *)
+  type t
+
+  (** create a lock(file) *)
+  val v : string -> t
+
+  (** try to lock the given lock (blocks until success) *)
+  val lock : t -> unit
+
+  (** try to lock the given lock (None on failure) *)
+  val try_lock : t -> bool
+
+  (** unlock the given lock *)
+  val unlock : t -> unit
+end
+
 module type S = sig
 
   module Store : Git.Store.S 
@@ -29,7 +47,7 @@ module type S = sig
   val deliver_plain : Store.t -> In_channel.t -> (unit, error) result Lwt.t
 end
 
-module Make (G : Git_ops.S) : sig
+module Make (G : Git_ops.S) (L : Locking) : sig
   include
     S 
     with module Store = G.Store

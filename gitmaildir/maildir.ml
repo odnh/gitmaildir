@@ -12,6 +12,18 @@ let get_new_email_filename () =
 
 (* -------------------- Main functions -------------------- *)
 
+module type Locking = sig
+  type t
+
+  val v : string -> t
+
+  val lock : t -> unit
+
+  val try_lock : t -> bool
+
+  val unlock : t -> unit
+end
+
 module type S = sig
 
   module Store : Git.Store.S
@@ -35,10 +47,11 @@ module type S = sig
   val deliver_plain : Store.t -> In_channel.t -> (unit, error) result Lwt.t
 end
 
-module Make (G : Git_ops.S) = struct
+module Make (G : Git_ops.S) (L : Locking) = struct
 
   module Store = G.Store
   open G
+  module Lock = L
 
   let deliver_mail store input =
     let mail_name = Git.Path.v @@ ("new/" ^ get_new_email_filename ()) in

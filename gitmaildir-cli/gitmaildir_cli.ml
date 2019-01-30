@@ -4,7 +4,7 @@ open Lwt.Infix
 
 module Store = Git.Store.Make(Digestif.SHA1)(Git_unix.Fs)(Git.Inflate)(Git.Deflate)
 module Git_ops = Gitmaildir.Git_ops.Make(Store)
-module Maildir = Gitmaildir.Maildir.Make(Git_ops)
+module Maildir = Gitmaildir.Maildir.Make(Git_ops)(Locking_unix)
 
 let lift_error err = (err :> Git_ops.error)
 
@@ -13,12 +13,6 @@ let store_of_string path =
   >|= function
     | Ok s -> s
     | Error _ -> failwith "Bad Store"
-
-(* Must hold this lock any time we make changes to the store *)
-let global_lock store_path = Locking.v @@ store_path ^ ".lock"
-
-(* This is to redirect changes to a different branch while the directory is in use *)
-let dir_use_lock store_path = Locking.v @@ store_path ^ ".dir_in_use"
 
 (* deliver command *)
 
