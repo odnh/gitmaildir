@@ -47,7 +47,21 @@ module type S = sig
   val deliver_plain : Store.t -> In_channel.t -> (unit, error) result Lwt.t
 end
 
-module Make (G : Git_ops.S) (L : Locking) : sig
+module Make (G : Git_ops.S) : sig
+  include
+    S 
+    with module Store = G.Store
+    and type error := G.error
+end
+
+module Make_locking (G : Git_ops.S) (L : Locking) : sig
+  include
+    S 
+    with module Store = G.Store
+    and type error := G.error
+end
+
+module Make_lockless (G : Git_ops.S) : sig
   include
     S 
     with module Store = G.Store
