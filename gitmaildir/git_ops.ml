@@ -4,9 +4,11 @@ open Lwt_result_helpers
 
 module type S = sig
 
+  module Store : Git.Store.S
+
   type error
 
-  module Store : Git.Store.S
+  val pp_error : Format.formatter -> error -> unit
 
   val add_blob_to_store : Store.t -> In_channel.t -> (Store.Hash.t, error) result Lwt.t
 
@@ -54,11 +56,18 @@ module Make (Store : Git.Store.S) = struct
   module Tree = Store.Value.Tree
 
   type error = [
-    | `Not_a_tree
-    | `Not_a_commit
-    | `No_entry_in_tree
-    | `Invalid_path
+    | `Not_a_tree of Store.Hash.t
+    | `Not_a_commit of Store.Hash.t
+    | `No_entry_in_tree of string * Tree.t
+    | `Invalid_path of Git.Path.t
     | Store.error ]
+  
+  let pp_error ppf = function
+    | `Not_a_tree hash -> Fmt.pf ppf "Not a tree: %a" Store.Hash.pp hash
+    | `Not_a_commit hash -> Fmt.pf ppf "Not a commit: %a" Store.Hash.pp hash
+    | `No_entry_in_tree (name, tree) -> Fmt.pf ppf "No entry: %a in tree: %a" Format.pp_print_string name Tree.pp tree 
+    | `Invalid_path path -> Fmt.pf ppf "Invalid path in store: %a" Git.Path.pp path
+    | #Store.error as err -> Fmt.pf ppf "%a" Store.pp_error err
 
   (** for lifting Store.error up to Git.ops.error *)
   let lift_error err = (err :> error)
@@ -75,13 +84,13 @@ module Make (Store : Git.Store.S) = struct
     let match_tree = (function
       | Ok (Store.Value.Tree t) -> Ok t
       | Error e -> Error (lift_error e)
-      | _ -> Error `Not_a_tree) in
+      | _ -> Error (`Not_a_tree hash)) in
     data >|= match_tree
 
   let entry_from_tree name tree =
     Store.Value.Tree.to_list tree
     |> List.find ~f:(fun e -> e.Store.Value.Tree.name = name)
-    |> Result.of_option ~error:`No_entry_in_tree
+    |> Result.of_option ~error:(`No_entry_in_tree (name, tree))
 
   (** returns a default user with current time for commits *)
   let get_user time =
@@ -152,7 +161,7 @@ module Make (Store : Git.Store.S) = struct
 
   let add_blob_to_tree store tree path blob =
     match get_last @@ Git.Path.segs path with
-    | None -> Lwt.return_error `Invalid_path
+    | None -> Lwt.return_error (`Invalid_path path)
     | Some (name, loc) ->
         let entry = Tree.entry name `Normal blob in
         modify_tree store tree (Git.Path.of_segs loc) ~f:(fun t -> Tree.add t entry)
@@ -183,7 +192,7 @@ module Make (Store : Git.Store.S) = struct
           let current_tree = read_as_tree store tree_hash in
           let subtree_entry = current_tree >>=| entry_from_tree x in
           subtree_entry >>= function
-            | Error `No_entry_in_tree ->
+            | Error (`No_entry_in_tree (_, _))->
                 let new_subtree_hash = build_subtrees store xs name blob in
                 let new_subtree_entry =
                   new_subtree_hash >>|| Tree.entry x `Dir in
@@ -210,12 +219,12 @@ module Make (Store : Git.Store.S) = struct
                   | Ok v -> write_value store v
                   | Error e ->  Lwt.return_error e) in
     match get_last @@ Git.Path.segs path with
-    | None -> Lwt.return_error `Invalid_path
+    | None -> Lwt.return_error (`Invalid_path path)
     | Some p -> aux p tree
 
   let remove_entry_from_tree store tree path =
     match get_last @@ Git.Path.segs path with
-    | None -> Lwt.return_error `Invalid_path
+    | None -> Lwt.return_error (`Invalid_path path)
     | Some (name, loc) ->
         modify_tree store tree (Git.Path.of_segs loc) ~f:(Tree.remove ~name)
 
@@ -255,14 +264,14 @@ module Make (Store : Git.Store.S) = struct
     read_value store commit
     >>=| (function
       | Commit c -> Ok c
-      | _ -> Error `Not_a_commit)
+      | _ -> Error (`Not_a_commit commit))
     >>|| Store.Value.Commit.parents
 
   let get_commit_tree store commit =
     read_value store commit
     >>=| (function
       | Commit c -> Ok c
-      | _ -> Error `Not_a_commit)
+      | _ -> Error (`Not_a_commit commit))
     >>|| Store.Value.Commit.tree
 
   (* TODO: implement *)

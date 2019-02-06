@@ -8,6 +8,8 @@ module Maildir = Gitmaildir.Maildir.Make_locking(Git_ops)(Locking_unix)
 
 let lift_error err = (err :> Git_ops.error)
 
+let err_out err = Git_ops.pp_error Format.std_formatter err
+
 let store_of_string path =
   Store.v () Fpath.(v path)
   >|= function
@@ -21,7 +23,7 @@ let deliver store =
   let deliver_lwt = store >>= (fun s -> Maildir.deliver_mail s In_channel.stdin) in
   match Lwt_main.run deliver_lwt with
   | Ok _ -> ()
-  | Error _ -> failwith "ERROR"
+  | Error e -> err_out e
 
 let store_arg =
   let doc = "Path of the gitmaildir to deliver to." in
@@ -44,7 +46,7 @@ let move store path new_path =
   let move_lwt = store >>= (fun s -> Maildir.move_mail s path new_path) in
   match Lwt_main.run move_lwt with
   | Ok _ -> ()
-  | Error _ -> failwith "ERROR"
+  | Error e -> err_out e
 
 let move_path_arg =
   let doc = "current path of file to move" in
@@ -68,7 +70,7 @@ let delete store path =
   let delete_lwt = store >>= (fun s -> Maildir.delete_mail s path) in
   match Lwt_main.run delete_lwt with
   | Ok _ -> ()
-  | Error _ -> failwith "ERROR"
+  | Error e -> err_out e
 
 let delete_path_arg =
   let doc = "path of file to delete" in
@@ -89,7 +91,7 @@ let add store path =
   let add_lwt = store >>= (fun s -> Maildir.add_mail s path input) in
   match Lwt_main.run add_lwt with
   | Ok _ -> ()
-  | Error _ -> failwith "ERROR"
+  | Error e -> err_out e
 
 let add_path_arg =
   let doc = "path of where to add mail" in

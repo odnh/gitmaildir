@@ -1,9 +1,13 @@
 module type S = sig
 
-  type error
-
   (** The Store module used to make the implementation. *)
   module Store : Git.Store.S
+
+  (** The type of an error *)
+  type error
+
+  (** Pretty prints error type *)
+  val pp_error : Format.formatter -> error -> unit
 
   (** Add new blob to store *)
   val add_blob_to_store : Store.t -> in_channel -> (Store.Hash.t, error) result Lwt.t
