@@ -25,19 +25,19 @@ module type S_raw = sig
   type error
 
   (** delivers a new mail to the specified git store *)
-  val deliver_mail : Store.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  val deliver_mail : Store.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
 
   (** move (ie rename) an email *)
-  val move_mail : Store.t -> Fpath.t -> Fpath.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  val move_mail : Store.t -> Fpath.t -> Fpath.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
 
   (** removes the given mail from the current tree *)
-  val delete_mail : Store.t -> Fpath.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  val delete_mail : Store.t -> Fpath.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
 
   (** adds an email at any specified path *)
-  val add_mail_time : float -> Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  val add_mail_time : float -> Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
   
   (** adds an email at any specified path *)
-  val add_mail : Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  val add_mail : Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
 end
 
 module type S = sig
@@ -47,25 +47,25 @@ module type S = sig
   type error
 
   (** delivers a new mail to the specified git store *)
-  val deliver_mail : Store.t -> In_channel.t -> (unit, error) result Lwt.t
+  val deliver_mail : Store.t -> In_channel.t -> (unit, error) Lwt_result.t
 
   (** move (ie rename) an email *)
-  val move_mail : Store.t -> Fpath.t -> Fpath.t -> (unit, error) result Lwt.t
+  val move_mail : Store.t -> Fpath.t -> Fpath.t -> (unit, error) Lwt_result.t
 
   (** removes the given mail from the current tree *)
-  val delete_mail : Store.t -> Fpath.t -> (unit, error) result Lwt.t
+  val delete_mail : Store.t -> Fpath.t -> (unit, error) Lwt_result.t
 
   (** adds an email at any specified path *)
-  val add_mail_time : float -> Store.t -> Fpath.t -> In_channel.t -> (unit, error) result Lwt.t
+  val add_mail_time : float -> Store.t -> Fpath.t -> In_channel.t -> (unit, error) Lwt_result.t
   
   (** adds an email at any specified path *)
-  val add_mail : Store.t -> Fpath.t -> In_channel.t -> (unit, error) result Lwt.t
+  val add_mail : Store.t -> Fpath.t -> In_channel.t -> (unit, error) Lwt_result.t
 
   (** inits a gitmaildir (ie empty git repository with initial commit) *)
-  val init_gitmaildir : Store.t -> (unit, error) result Lwt.t
+  val init_gitmaildir : Store.t -> (unit, error) Lwt_result.t
 
   (** converts an existing maildir to a gitmaildir *)
-  val convert_maildir : Store.t -> Fpath.t -> (unit, error) result Lwt.t
+  val convert_maildir : Store.t -> Fpath.t -> (unit, error) Lwt_result.t
 end
 
 module Make_raw (G : Git_ops.S) : sig

@@ -27,19 +27,19 @@ end
 
 module type S_raw = sig
 
-  module Store : Git.Store.S 
+  module Store : Git.Store.S
 
   type error
 
-  val deliver_mail : Store.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  val deliver_mail : Store.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
 
-  val move_mail : Store.t -> Fpath.t -> Fpath.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  val move_mail : Store.t -> Fpath.t -> Fpath.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
 
-  val delete_mail : Store.t -> Fpath.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  val delete_mail : Store.t -> Fpath.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
 
-  val add_mail_time : float -> Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
-  
-  val add_mail : Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  val add_mail_time : float -> Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
+
+  val add_mail : Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
 end
 
 module type S = sig
@@ -48,19 +48,19 @@ module type S = sig
 
   type error
 
-  val deliver_mail : Store.t -> In_channel.t -> (unit, error) result Lwt.t
+  val deliver_mail : Store.t -> In_channel.t -> (unit, error) Lwt_result.t
 
-  val move_mail : Store.t -> Fpath.t -> Fpath.t -> (unit, error) result Lwt.t
+  val move_mail : Store.t -> Fpath.t -> Fpath.t -> (unit, error) Lwt_result.t
 
-  val delete_mail : Store.t -> Fpath.t -> (unit, error) result Lwt.t
+  val delete_mail : Store.t -> Fpath.t -> (unit, error) Lwt_result.t
 
-  val add_mail_time : float -> Store.t -> Fpath.t -> In_channel.t -> (unit, error) result Lwt.t
+  val add_mail_time : float -> Store.t -> Fpath.t -> In_channel.t -> (unit, error) Lwt_result.t
 
-  val add_mail : Store.t -> Fpath.t -> In_channel.t -> (unit, error) result Lwt.t
+  val add_mail : Store.t -> Fpath.t -> In_channel.t -> (unit, error) Lwt_result.t
 
-  val init_gitmaildir : Store.t -> (unit, error) result Lwt.t
+  val init_gitmaildir : Store.t -> (unit, error) Lwt_result.t
 
-  val convert_maildir : Store.t -> Fpath.t -> (unit, error) result Lwt.t
+  val convert_maildir : Store.t -> Fpath.t -> (unit, error) Lwt_result.t
 end
 
 module Make_raw (G : Git_ops.S) = struct
@@ -73,7 +73,7 @@ module Make_raw (G : Git_ops.S) = struct
     let tree = get_commit_tree store commit in
     add_blob_to_store store input
     |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a mail_name b) tree
-    >>== commit_tree store [commit] "deliver mail" 
+    >>== commit_tree store [commit] "deliver mail"
 
   let delete_mail store path commit =
     let gpath = Git.Path.v (Fpath.to_string path) in
@@ -179,7 +179,7 @@ module Make_locking (G : Git_ops.S) (L : Locking) = struct
 
   let delete_mail store path =
     Lwt.return_unit >|= (fun () ->
-    Lock.lock lock) >>= (fun () -> 
+    Lock.lock lock) >>= (fun () ->
     Unsafe.delete_mail store path) >|= (fun a ->
     Lock.unlock lock; a)
 

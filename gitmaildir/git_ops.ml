@@ -10,44 +10,44 @@ module type S = sig
 
   val pp_error : Format.formatter -> error -> unit
 
-  val add_blob_to_store : Store.t -> In_channel.t -> (Store.Hash.t, error) result Lwt.t
+  val add_blob_to_store : Store.t -> In_channel.t -> (Store.Hash.t, error) Lwt_result.t
 
   val commit_tree : ?time:float -> Store.t -> Store.Hash.t list -> string -> Store.Hash.t
-                    ->(Store.Hash.t, error) result Lwt.t
+                    ->(Store.Hash.t, error) Lwt_result.t
 
   val modify_tree : Store.t -> Store.Hash.t -> Git.Path.t
                     -> f:(Store.Value.Tree.t -> Store.Value.Tree.t)
-                    -> (Store.Hash.t, error) result Lwt.t
+                    -> (Store.Hash.t, error) Lwt_result.t
 
   val add_blob_to_tree : Store.t -> Store.Hash.t -> Git.Path.t -> Store.Hash.t
-                        -> (Store.Hash.t, error) result Lwt.t
+                        -> (Store.Hash.t, error) Lwt_result.t
 
   val add_blob_to_tree_extend : Store.t -> Store.Hash.t -> Git.Path.t -> Store.Hash.t
-                        -> (Store.Hash.t, error) result Lwt.t
+                        -> (Store.Hash.t, error) Lwt_result.t
 
   val remove_entry_from_tree : Store.t -> Store.Hash.t -> Git.Path.t
-                               -> (Store.Hash.t, error) result Lwt.t
+                               -> (Store.Hash.t, error) Lwt_result.t
 
   val make_ref : Git.Path.t -> Git.Reference.t
 
-  val hash_of_ref : Store.t -> Git.Reference.t -> (Store.Hash.t, error) result Lwt.t
+  val hash_of_ref : Store.t -> Git.Reference.t -> (Store.Hash.t, error) Lwt_result.t
 
-  val update_ref : Store.t -> Git.Reference.t -> Store.Hash.t -> (unit, error) result Lwt.t
+  val update_ref : Store.t -> Git.Reference.t -> Store.Hash.t -> (unit, error) Lwt_result.t
 
-  val get_master_commit : Store.t -> (Store.Hash.t, error) result Lwt.t
+  val get_master_commit : Store.t -> (Store.Hash.t, error) Lwt_result.t
 
-  val get_branch_commit : Store.t -> Git.Reference.t -> (Store.Hash.t, error) result Lwt.t
+  val get_branch_commit : Store.t -> Git.Reference.t -> (Store.Hash.t, error) Lwt_result.t
 
-  val get_commit_parents : Store.t -> Store.Hash.t -> (Store.Hash.t list, error) result Lwt.t
+  val get_commit_parents : Store.t -> Store.Hash.t -> (Store.Hash.t list, error) Lwt_result.t
 
-  val get_commit_tree : Store.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  val get_commit_tree : Store.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
 
   val get_hash_at_path : Store.t -> Store.Hash.t -> Git.Path.t
-                         -> (Store.Hash.t, error) result Lwt.t
+                         -> (Store.Hash.t, error) Lwt_result.t
 
-  val checkout_to_dir : Store.t -> Store.Hash.t -> Fpath.t -> (unit, error) result Lwt.t
+  val checkout_to_dir : Store.t -> Store.Hash.t -> Fpath.t -> (unit, error) Lwt_result.t
 
-  val init_empty_blob : Store.t -> (unit, error) result Lwt.t
+  val init_empty_blob : Store.t -> (unit, error) Lwt_result.t
 end
 
 module Make (Store : Git.Store.S) = struct
