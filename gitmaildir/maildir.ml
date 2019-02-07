@@ -1,4 +1,5 @@
 open Core
+open Lwt.Infix
 open Lwt_result_helpers
 
 (* -------------------- Helper functions -------------------- *)
@@ -24,6 +25,23 @@ module type Locking = sig
   val unlock : t -> unit
 end
 
+module type S_raw = sig
+
+  module Store : Git.Store.S 
+
+  type error
+
+  val deliver_mail : Store.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+
+  val move_mail : Store.t -> Fpath.t -> Fpath.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+
+  val delete_mail : Store.t -> Fpath.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+
+  val add_mail_time : float -> Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+  
+  val add_mail : Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) result Lwt.t
+end
+
 module type S = sig
 
   module Store : Git.Store.S
@@ -36,61 +54,80 @@ module type S = sig
 
   val delete_mail : Store.t -> Fpath.t -> (unit, error) result Lwt.t
 
+  val add_mail_time : float -> Store.t -> Fpath.t -> In_channel.t -> (unit, error) result Lwt.t
+
   val add_mail : Store.t -> Fpath.t -> In_channel.t -> (unit, error) result Lwt.t
 
   val init_gitmaildir : Store.t -> (unit, error) result Lwt.t
 
   val convert_maildir : Store.t -> Fpath.t -> (unit, error) result Lwt.t
-
-  val generate_plain_branch : Store.t -> (unit, error) result Lwt.t
-
-  val deliver_plain : Store.t -> In_channel.t -> (unit, error) result Lwt.t
 end
 
-module Make (G : Git_ops.S) = struct
+module Make_raw (G : Git_ops.S) = struct
 
   module Store = G.Store
   open G
 
-  let deliver_mail store input =
+  let deliver_mail store input commit =
     let mail_name = Git.Path.v @@ ("new/" ^ get_new_email_filename ()) in
+    let tree = get_commit_tree store commit in
+    add_blob_to_store store input
+    |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a mail_name b) tree
+    >>== commit_tree store [commit] "deliver mail" 
+
+  let delete_mail store path commit =
+    let gpath = Git.Path.v (Fpath.to_string path) in
+    let tree = get_commit_tree store commit in
+    tree >>== (fun a -> remove_entry_from_tree store a gpath)
+    >>== commit_tree store [commit] "remove mail"
+
+  let move_mail store path new_path commit =
+    let path = Git.Path.v (Fpath.to_string path) in
+    let new_path = Git.Path.v (Fpath.to_string new_path) in
+    let tree = get_commit_tree store commit in
+    let hash = tree >>== (fun t -> get_hash_at_path store t path) in
+    tree >>== (fun a -> remove_entry_from_tree store a path)
+    |> lwt_result_bind2 (fun a b -> add_blob_to_tree store b new_path a) hash
+    >>== commit_tree store [commit] "move mail"
+
+  let add_mail_time time store path input commit =
+    let path = Git.Path.v (Fpath.to_string path) in
+    let tree = get_commit_tree store commit in
+    add_blob_to_store store input
+    |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a path b) tree
+    >>== commit_tree ~time store [commit] "deliver mail"
+
+  let add_mail = add_mail_time (Unix.time ())
+end
+
+module Make_unsafe (G : Git_ops.S) = struct
+
+  module Store = G.Store
+  module Raw = Make_raw(G)
+  open G
+
+  let deliver_mail store input =
     let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    add_blob_to_store store input
-    |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a mail_name b) master_tree
-    |> lwt_result_bind2 (fun a b -> commit_tree store [a] "deliver mail" b) master_commit
+    master_commit >>== Raw.deliver_mail store input
     >>== update_ref store master_ref
 
   let delete_mail store path =
-    let gpath = Git.Path.v (Fpath.to_string path) in
     let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    master_tree >>== (fun a -> remove_entry_from_tree store a gpath)
-    |> lwt_result_bind2 (fun a b -> commit_tree store [a] "remove mail" b) master_commit
+    master_commit >>== Raw.delete_mail store path
     >>== update_ref store master_ref
 
   let move_mail store path new_path =
-    let path = Git.Path.v (Fpath.to_string path) in
-    let new_path = Git.Path.v (Fpath.to_string new_path) in
     let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    let hash = master_tree >>== (fun t -> get_hash_at_path store t path) in
-    master_tree >>== (fun a -> remove_entry_from_tree store a path)
-    |> lwt_result_bind2 (fun a b -> add_blob_to_tree store b new_path a) hash
-    |> lwt_result_bind2 (fun a b -> commit_tree store [a] "move mail" b) master_commit
+    master_commit >>== Raw.move_mail store path new_path
     >>== update_ref store master_ref
 
   let add_mail_time time store path input =
-    let path = Git.Path.v (Fpath.to_string path) in
     let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    add_blob_to_store store input
-    |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a path b) master_tree
-    |> lwt_result_bind2 (fun a b -> commit_tree ~time store [a] "deliver mail" b) master_commit
+    master_commit >>== Raw.add_mail_time time store path input
     >>== update_ref store master_ref
 
   let add_mail = add_mail_time (Unix.time ())
@@ -123,73 +160,40 @@ module Make (G : Git_ops.S) = struct
         let input = In_channel.create f2 in
         acc >>== (fun () -> add_mail_time t store (Fpath.v f1) input)
         >>|| (fun x -> In_channel.close input; x))
-
-
-  (* TODO: implement *)
-  let generate_plain_branch _ =
-    Lwt.return_ok ()
-
-  (* TODO: implement *)
-  let deliver_plain _ _ =
-    Lwt.return_ok ()
 end
 
 module Make_locking (G : Git_ops.S) (L : Locking) = struct
 
   module Store = G.Store
-  open G
+  module Unsafe = Make_unsafe(G)
   module Lock = L
+  open G
 
-  let global_lock = Lock.v ".global_lock"
+  let lock = Lock.v ".global_lock"
 
   let deliver_mail store input =
-    Lock.lock global_lock;
-    let mail_name = Git.Path.v @@ ("new/" ^ get_new_email_filename ()) in
-    let master_ref = Git.Reference.master in
-    let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    add_blob_to_store store input
-    |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a mail_name b) master_tree
-    |> lwt_result_bind2 (fun a b -> commit_tree store [a] "deliver mail" b) master_commit
-    >>== update_ref store master_ref
-    |> (fun a -> Lock.unlock global_lock; a)
+    Lwt.return_unit >|= (fun () ->
+    Lock.lock lock) >>= (fun () ->
+    Unsafe.deliver_mail store input) >|= (fun a ->
+    Lock.unlock lock; a)
 
   let delete_mail store path =
-    Lock.lock global_lock;
-    let gpath = Git.Path.v (Fpath.to_string path) in
-    let master_ref = Git.Reference.master in
-    let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    master_tree >>== (fun a -> remove_entry_from_tree store a gpath)
-    |> lwt_result_bind2 (fun a b -> commit_tree store [a] "remove mail" b) master_commit
-    >>== update_ref store master_ref
-    |> (fun a -> Lock.unlock global_lock; a)
+    Lwt.return_unit >|= (fun () ->
+    Lock.lock lock) >>= (fun () -> 
+    Unsafe.delete_mail store path) >|= (fun a ->
+    Lock.unlock lock; a)
 
   let move_mail store path new_path =
-    Lock.lock global_lock;
-    let path = Git.Path.v (Fpath.to_string path) in
-    let new_path = Git.Path.v (Fpath.to_string new_path) in
-    let master_ref = Git.Reference.master in
-    let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    let hash = master_tree >>== (fun t -> get_hash_at_path store t path) in
-    master_tree >>== (fun a -> remove_entry_from_tree store a path)
-    |> lwt_result_bind2 (fun a b -> add_blob_to_tree store b new_path a) hash
-    |> lwt_result_bind2 (fun a b -> commit_tree store [a] "move mail" b) master_commit
-    >>== update_ref store master_ref
-    |> (fun a -> Lock.unlock global_lock; a)
+    Lwt.return_unit >|= (fun () ->
+    Lock.lock lock) >>= (fun () ->
+    Unsafe.move_mail store path new_path) >|= (fun a ->
+    Lock.unlock lock; a)
 
   let add_mail_time time store path input =
-    Lock.lock global_lock;
-    let path = Git.Path.v (Fpath.to_string path) in
-    let master_ref = Git.Reference.master in
-    let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    add_blob_to_store store input
-    |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a path b) master_tree
-    |> lwt_result_bind2 (fun a b -> commit_tree ~time store [a] "deliver mail" b) master_commit
-    >>== update_ref store master_ref
-    |> (fun a -> Lock.unlock global_lock; a)
+    Lwt.return_unit >|= (fun () ->
+    Lock.lock lock) >>= (fun () ->
+    Unsafe.add_mail_time time store path input) >|= (fun a ->
+    Lock.unlock lock; a)
 
   let add_mail = add_mail_time (Unix.time ())
 
@@ -217,66 +221,44 @@ module Make_locking (G : Git_ops.S) (L : Locking) = struct
         , f, t))
     |> List.fold ~init:(Lwt.return_ok ()) ~f:(
       fun acc (f1, f2, t) ->
+        (* TODO: make line below lwt so not too many simultaneous fds *)
         let input = In_channel.create f2 in
         acc >>== (fun () -> add_mail_time t store (Fpath.v f1) input)
         >>|| (fun x -> In_channel.close input; x))
-
-
-  (* TODO: implement *)
-  let generate_plain_branch _ =
-    Lwt.return_ok ()
-
-  (* TODO: implement *)
-  let deliver_plain _ _ =
-    Lwt.return_ok ()
 end
 
-
-(* TODO: make lockless *)
-module Make_lockless (G : Git_ops.S) = struct
+(* TODO: implement the locking *)
+module Make_lockless (G : Git_ops.S) (L : Locking) = struct
 
   module Store = G.Store
+  module Raw = Make_raw(G)
+  module Lock = L
   open G
 
+  let _lock = Lock.v ".global_lock"
+
   let deliver_mail store input =
-    let mail_name = Git.Path.v @@ ("new/" ^ get_new_email_filename ()) in
     let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    add_blob_to_store store input
-    |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a mail_name b) master_tree
-    |> lwt_result_bind2 (fun a b -> commit_tree store [a] "deliver mail" b) master_commit
+    master_commit >>== Raw.deliver_mail store input
     >>== update_ref store master_ref
 
   let delete_mail store path =
-    let gpath = Git.Path.v (Fpath.to_string path) in
     let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    master_tree >>== (fun a -> remove_entry_from_tree store a gpath)
-    |> lwt_result_bind2 (fun a b -> commit_tree store [a] "remove mail" b) master_commit
+    master_commit >>== Raw.delete_mail store path
     >>== update_ref store master_ref
 
   let move_mail store path new_path =
-    let path = Git.Path.v (Fpath.to_string path) in
-    let new_path = Git.Path.v (Fpath.to_string new_path) in
     let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    let hash = master_tree >>== (fun t -> get_hash_at_path store t path) in
-    master_tree >>== (fun a -> remove_entry_from_tree store a path)
-    |> lwt_result_bind2 (fun a b -> add_blob_to_tree store b new_path a) hash
-    |> lwt_result_bind2 (fun a b -> commit_tree store [a] "move mail" b) master_commit
+    master_commit >>== Raw.move_mail store path new_path
     >>== update_ref store master_ref
 
   let add_mail_time time store path input =
-    let path = Git.Path.v (Fpath.to_string path) in
     let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    let master_tree = master_commit >>== get_commit_tree store in
-    add_blob_to_store store input
-    |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a path b) master_tree
-    |> lwt_result_bind2 (fun a b -> commit_tree ~time store [a] "deliver mail" b) master_commit
+    master_commit >>== Raw.add_mail_time time store path input
     >>== update_ref store master_ref
 
   let add_mail = add_mail_time (Unix.time ())
@@ -305,16 +287,8 @@ module Make_lockless (G : Git_ops.S) = struct
         , f, t))
     |> List.fold ~init:(Lwt.return_ok ()) ~f:(
       fun acc (f1, f2, t) ->
+        (* TODO: make line below lwt so not too many simultaneous fds *)
         let input = In_channel.create f2 in
         acc >>== (fun () -> add_mail_time t store (Fpath.v f1) input)
         >>|| (fun x -> In_channel.close input; x))
-
-
-  (* TODO: implement *)
-  let generate_plain_branch _ =
-    Lwt.return_ok ()
-
-  (* TODO: implement *)
-  let deliver_plain _ _ =
-    Lwt.return_ok ()
 end

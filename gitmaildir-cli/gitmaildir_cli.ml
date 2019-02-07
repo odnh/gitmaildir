@@ -8,7 +8,9 @@ module Maildir = Gitmaildir.Maildir.Make_locking(Git_ops)(Locking_unix)
 
 let lift_error err = (err :> Git_ops.error)
 
-let err_out err = Git_ops.pp_error Format.std_formatter err
+let err_out err =
+  Git_ops.pp_error Format.std_formatter err;
+  Out_channel.newline stdout
 
 let store_of_string path =
   Store.v () Fpath.(v path)
