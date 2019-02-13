@@ -52,7 +52,7 @@ let convert_maildir store path =
     In_channel.close input;
     match result with
     | Ok () -> ()
-    | Error _ -> failwith "Conversion Error")
+    | Error e -> err_out e; failwith "Conversion Error")
     
 
 (* deliver command *)
