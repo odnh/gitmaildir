@@ -232,6 +232,7 @@ module Make_granular (G : Git_ops.S) (L : Locking) = struct
 
   let lock = Lock.v ".global_lock"
 
+  (** trys to run a function on the previous master tree and commit the new one. Retries until success *)
   let rec try_with_commit f master_commit store =
     let master_ref = Git.Reference.master in
     f master_commit
@@ -249,9 +250,17 @@ module Make_granular (G : Git_ops.S) (L : Locking) = struct
     >|= (fun res -> Lock.unlock lock; res)) (* END LOCK (in case failed earlier) *)
 
   let deliver_mail store input =
+    let mail_name = Git.Path.v @@ ("new/" ^ get_new_email_filename ()) in
+    let blob_hash = add_blob_to_store store input in
+    (* Have to define extra helper rather than use Raw module due to external input *)
+    let deliver_blob store commit =
+      let tree = get_commit_tree store commit in
+      blob_hash
+      |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a mail_name b) tree
+      >>== commit_tree store [commit] "deliver mail" in
     let master_commit = get_master_commit store in
     master_commit >>== (fun master_commit ->
-      try_with_commit (Raw.deliver_mail store input) master_commit store)
+      try_with_commit (deliver_blob store) master_commit store)
 
   let delete_mail store path =
     let master_commit = get_master_commit store in
@@ -264,9 +273,16 @@ module Make_granular (G : Git_ops.S) (L : Locking) = struct
       try_with_commit (Raw.move_mail store path new_path) master_commit store)
 
   let add_mail_time time store path input =
+    let path = Git.Path.v (Fpath.to_string path) in
+    let blob_hash = add_blob_to_store store input in
+    let add_blob_time time store path commit =
+      let tree = get_commit_tree store commit in
+      blob_hash
+      |> lwt_result_bind2 (fun a b -> add_blob_to_tree_extend store a path b) tree
+      >>== commit_tree ~time store [commit] "deliver mail" in
     let master_commit = get_master_commit store in
     master_commit >>== (fun master_commit ->
-      try_with_commit (Raw.add_mail_time time store path input) master_commit store)
+      try_with_commit (add_blob_time time store path) master_commit store)
 
   let add_mail = add_mail_time (Unix.time ())
 
