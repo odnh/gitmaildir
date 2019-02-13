@@ -20,8 +20,6 @@ module type Locking = sig
 
   val lock : t -> unit
 
-  val try_lock : t -> bool
-
   val unlock : t -> unit
 end
 
@@ -156,7 +154,6 @@ module Make_unsafe (G : Git_ops.S) = struct
         , f, t))
     |> List.fold ~init:(Lwt.return_ok ()) ~f:(
       fun acc (f1, f2, t) ->
-        (* TODO: make line below lwt so not too many simultaneous fds *)
         let input = In_channel.create f2 in
         acc >>== (fun () -> add_mail_time t store (Fpath.v f1) input)
         >>|| (fun x -> In_channel.close input; x))
@@ -221,7 +218,6 @@ module Make_locking (G : Git_ops.S) (L : Locking) = struct
         , f, t))
     |> List.fold ~init:(Lwt.return_ok ()) ~f:(
       fun acc (f1, f2, t) ->
-        (* TODO: make line below lwt so not too many simultaneous fds *)
         let input = In_channel.create f2 in
         acc >>== (fun () -> add_mail_time t store (Fpath.v f1) input)
         >>|| (fun x -> In_channel.close input; x))
@@ -287,7 +283,6 @@ module Make_lockless (G : Git_ops.S) (L : Locking) = struct
         , f, t))
     |> List.fold ~init:(Lwt.return_ok ()) ~f:(
       fun acc (f1, f2, t) ->
-        (* TODO: make line below lwt so not too many simultaneous fds *)
         let input = In_channel.create f2 in
         acc >>== (fun () -> add_mail_time t store (Fpath.v f1) input)
         >>|| (fun x -> In_channel.close input; x))

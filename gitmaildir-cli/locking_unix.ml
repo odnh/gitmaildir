@@ -1,11 +1,9 @@
-module Lf = Core.Lock_file
+module Unix = Core.Unix
 
-type t = string
+type t = Unix.File_descr.t * Mutex.t
 
-let v path = path
+let v path = (Unix.openfile ~mode:[O_WRONLY; O_CREAT] path, Mutex.create ())
 
-let lock l = Lf.blocking_create l
+let lock l = Flock.flock (fst l) Flock.LOCK_EX; Mutex.lock (snd l)
 
-let try_lock l = Lf.create l
-
-let unlock l = Unix.unlink l
+let unlock l = Flock.flock (fst l) Flock.LOCK_UN; Mutex.unlock (snd l)

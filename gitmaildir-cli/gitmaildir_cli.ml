@@ -22,9 +22,6 @@ let store_of_string path =
 
 (* extra cli only functions *)
 
-let init_gitmaildir store =
-  Git_ops.init_empty_blob store
-
 let convert_maildir store path =
   let rec get_all_files result = function
     | f::fs when Sys.is_directory f = `Yes ->
@@ -53,7 +50,6 @@ let convert_maildir store path =
     match result with
     | Ok () -> ()
     | Error e -> err_out e; failwith "Conversion Error")
-    
 
 (* deliver command *)
 
@@ -147,11 +143,15 @@ let add_t = Term.(const add $ store_arg $ add_path_arg)
 let convert store path =
   print_endline @@ "STORE: " ^ store;
   print_endline @@ "PATH: " ^ path;
-  let store = Lwt_main.run @@ store_of_string store in
+  let store = store_of_string store in
   let path = Fpath.v path in
-  let init_lwt = Maildir.init_gitmaildir store in
-  match Lwt_main.run init_lwt with
-  | Ok () -> convert_maildir store path
+  let init_lwt = store >>= (fun s -> Maildir.init_gitmaildir s) in
+  (match Lwt_main.run init_lwt with
+  | Ok _ -> ()
+  | Error e -> err_out e);
+  let convert_lwt = store >>= (fun s -> Maildir.convert_maildir s path) in
+  match Lwt_main.run convert_lwt with
+  | Ok _ -> ()
   | Error e -> err_out e
 
 let convert_store_arg =
