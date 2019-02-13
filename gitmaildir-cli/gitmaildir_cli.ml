@@ -6,6 +6,8 @@ module Store = Git.Store.Make(Digestif.SHA1)(Git_unix.Fs)(Git.Inflate)(Git.Defla
 module Git_ops = Gitmaildir.Git_ops.Make(Store)
 module Maildir = Gitmaildir.Maildir.Make_locking(Git_ops)(Locking_unix)
 
+(* helper functions *)
+
 let lift_error err = (err :> Git_ops.error)
 
 let err_out err =
@@ -17,6 +19,41 @@ let store_of_string path =
   >|= function
     | Ok s -> s
     | Error _ -> failwith "Bad Store"
+
+(* extra cli only functions *)
+
+let init_gitmaildir store =
+  Git_ops.init_empty_blob store
+
+let convert_maildir store path =
+  let rec get_all_files result = function
+    | f::fs when Sys.is_directory f = `Yes ->
+        Sys.readdir f
+        |> Array.to_list
+        |> List.map ~f:(Filename.concat f)
+        |> List.append fs
+        |> get_all_files result
+    | f::fs -> get_all_files (f::result) fs
+    | [] -> result in
+  let maildir_root_length = Fpath.segs path |> List.length in
+  let all_files = get_all_files [] [Fpath.to_string path] in
+  let sorted_files = all_files
+    |> List.map ~f:(fun f -> f, (Unix.stat f).st_mtime)
+    |> List.sort ~compare:(fun (_,t1) (_,t2) -> Float.compare t1 t2)
+    |> List.map ~f:(fun (f,t) ->
+        (Fpath.(v f |> segs)
+          |> (fun l -> List.drop l maildir_root_length)
+          |> String.concat ~sep:Fpath.dir_sep
+        , f, t)) in
+  List.iter sorted_files ~f:(fun (f1, f2, t) ->
+    let input = In_channel.create f2 in
+    let deliver = Maildir.add_mail_time t store (Fpath.v f1) input in
+    let result = Lwt_main.run deliver in
+    In_channel.close input;
+    match result with
+    | Ok () -> ()
+    | Error _ -> failwith "Conversion Error")
+    
 
 (* deliver command *)
 
@@ -110,16 +147,12 @@ let add_t = Term.(const add $ store_arg $ add_path_arg)
 let convert store path =
   print_endline @@ "STORE: " ^ store;
   print_endline @@ "PATH: " ^ path;
-  let store = store_of_string store in
+  let store = Lwt_main.run @@ store_of_string store in
   let path = Fpath.v path in
-  let init_lwt = store >>= (fun s -> Maildir.init_gitmaildir s) in
-  (match Lwt_main.run init_lwt with
-  | Ok _ -> ()
-  | Error _ -> failwith "ERROR1");
-  let convert_lwt = store >>= (fun s -> Maildir.convert_maildir s path) in
-  match Lwt_main.run convert_lwt with
-  | Ok _ -> ()
-  | Error _ -> failwith "ERROR2"
+  let init_lwt = Maildir.init_gitmaildir store in
+  match Lwt_main.run init_lwt with
+  | Ok () -> convert_maildir store path
+  | Error e -> err_out e
 
 let convert_store_arg =
   let doc = "Path of directory to become new gitmaildir" in

@@ -61,11 +61,11 @@ module Make (Store : Git.Store.S) = struct
     | `No_entry_in_tree of string * Tree.t
     | `Invalid_path of Git.Path.t
     | Store.error ]
-  
+
   let pp_error ppf = function
     | `Not_a_tree hash -> Fmt.pf ppf "Not a tree: %a" Store.Hash.pp hash
     | `Not_a_commit hash -> Fmt.pf ppf "Not a commit: %a" Store.Hash.pp hash
-    | `No_entry_in_tree (name, tree) -> Fmt.pf ppf "No entry: %a in tree: %a" Format.pp_print_string name Tree.pp tree 
+    | `No_entry_in_tree (name, tree) -> Fmt.pf ppf "No entry: %a in tree: %a" Format.pp_print_string name Tree.pp tree
     | `Invalid_path path -> Fmt.pf ppf "Invalid path in store: %a" Git.Path.pp path
     | #Store.error as err -> Fmt.pf ppf "%a" Store.pp_error err
 
@@ -111,9 +111,9 @@ module Make (Store : Git.Store.S) = struct
 
   let add_blob_to_store store input =
     In_channel.input_all input
-      |> Store.Value.Blob.of_string
-      |> Store.Value.blob
-      |> write_value store
+    |> Store.Value.Blob.of_string
+    |> Store.Value.blob
+    |> write_value store
 
   let modify_tree store tree path ~f =
     let path_segs = Git.Path.segs path in
