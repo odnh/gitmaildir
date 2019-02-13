@@ -15,6 +15,7 @@ module type Locking = sig
   val unlock : t -> unit
 end
 
+(** The type of a module implementing a gitmaildir returning a commit hash *)
 module type S_raw = sig
 
   module Store : Git.Store.S 
@@ -37,6 +38,7 @@ module type S_raw = sig
   val add_mail : Store.t -> Fpath.t -> In_channel.t -> Store.Hash.t -> (Store.Hash.t, error) Lwt_result.t
 end
 
+(** The type of a module implementing a gitmaildir *)
 module type S = sig
 
   module Store : Git.Store.S 
@@ -65,6 +67,7 @@ module type S = sig
   val convert_maildir : Store.t -> Fpath.t -> (unit, error) Lwt_result.t
 end
 
+(** Maildir functionality returning a commit object *)
 module Make_raw (G : Git_ops.S) : sig
   include
     S_raw
@@ -72,6 +75,7 @@ module Make_raw (G : Git_ops.S) : sig
     and type error := G.error
 end
 
+(** Maildir functionality, unsafe in concurrent situations *)
 module Make_unsafe (G: Git_ops.S) : sig
   include
     S
@@ -79,6 +83,7 @@ module Make_unsafe (G: Git_ops.S) : sig
     and type error := G.error
 end
 
+(** Maildir functionality with locking *)
 module Make_locking (G : Git_ops.S) (L : Locking) : sig
   include
     S 
@@ -86,7 +91,8 @@ module Make_locking (G : Git_ops.S) (L : Locking) : sig
     and type error := G.error
 end
 
-module Make_lockless (G : Git_ops.S) (L : Locking) : sig
+(** Maildir functionality with granular locking *)
+module Make_granular (G : Git_ops.S) (L : Locking) : sig
   include
     S 
     with module Store = G.Store

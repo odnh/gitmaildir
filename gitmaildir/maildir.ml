@@ -223,7 +223,7 @@ module Make_locking (G : Git_ops.S) (L : Locking) = struct
         >>|| (fun x -> In_channel.close input; x))
 end
 
-module Make_lockless (G : Git_ops.S) (L : Locking) = struct
+module Make_granular (G : Git_ops.S) (L : Locking) = struct
 
   module Store = G.Store
   module Raw = Make_raw(G)
