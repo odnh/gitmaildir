@@ -223,7 +223,6 @@ module Make_locking (G : Git_ops.S) (L : Locking) = struct
         >>|| (fun x -> In_channel.close input; x))
 end
 
-(* TODO: implement the locking *)
 module Make_lockless (G : Git_ops.S) (L : Locking) = struct
 
   module Store = G.Store
@@ -231,31 +230,43 @@ module Make_lockless (G : Git_ops.S) (L : Locking) = struct
   module Lock = L
   open G
 
-  let _lock = Lock.v ".global_lock"
+  let lock = Lock.v ".global_lock"
+
+  let rec try_with_commit f master_commit store =
+    let master_ref = Git.Reference.master in
+    f master_commit
+    >>= (fun hash_result -> Lock.lock lock; Lwt.return hash_result) (* START LOCK *)
+    >>== (fun deliver_hash ->
+      get_master_commit store
+      >>== (fun new_master_commit ->
+        if G.Store.Hash.equal master_commit new_master_commit then
+          (let res = update_ref store master_ref deliver_hash in
+          Lock.unlock lock;
+          res)
+        else
+          (Lock.unlock lock;
+          try_with_commit f new_master_commit store))
+    >|= (fun res -> Lock.unlock lock; res)) (* END LOCK (in case failed earlier) *)
 
   let deliver_mail store input =
-    let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    master_commit >>== Raw.deliver_mail store input
-    >>== update_ref store master_ref
+    master_commit >>== (fun master_commit ->
+      try_with_commit (Raw.deliver_mail store input) master_commit store)
 
   let delete_mail store path =
-    let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    master_commit >>== Raw.delete_mail store path
-    >>== update_ref store master_ref
+    master_commit >>== (fun master_commit ->
+      try_with_commit (Raw.delete_mail store path) master_commit store)
 
   let move_mail store path new_path =
-    let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    master_commit >>== Raw.move_mail store path new_path
-    >>== update_ref store master_ref
+    master_commit >>== (fun master_commit ->
+      try_with_commit (Raw.move_mail store path new_path) master_commit store)
 
   let add_mail_time time store path input =
-    let master_ref = Git.Reference.master in
     let master_commit = get_master_commit store in
-    master_commit >>== Raw.add_mail_time time store path input
-    >>== update_ref store master_ref
+    master_commit >>== (fun master_commit ->
+      try_with_commit (Raw.add_mail_time time store path input) master_commit store)
 
   let add_mail = add_mail_time (Unix.time ())
 
