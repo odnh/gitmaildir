@@ -147,7 +147,7 @@ let convert store path =
   let path = Fpath.v path in
   let init_lwt = Maildir.init_gitmaildir store in
   match Lwt_main.run init_lwt with
-  | Ok () -> convert_maildir store path
+  | Ok () -> Lwt_main.run @@  Maildir.convert_maildir store path |> (fun _ -> ())(*convert_maildir store path*)
   | Error e -> err_out e
 
 let convert_store_arg =
@@ -163,6 +163,15 @@ let convert_info =
   Term.info "convert" ~doc ~exits:Term.default_exits
 
 let convert_t = Term.(const convert $ convert_store_arg $ convert_path_arg)
+
+(* init command *)
+
+let init store =
+  let store = store_of_string store in
+  let init_lwt = store >>= (fun s -> Maildir.init_gitmaildir s) in
+  match Lwt_main.run init_lwt with
+  | Ok _ -> ()
+  | Error e -> err_out e
 
 (* gitmaildir command *)
 
