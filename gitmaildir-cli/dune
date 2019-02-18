@@ -2,4 +2,4 @@
  (name        gitmaildir_cli)
  (public_name gitmaildir_cli)
  (package     gitmaildir_cli)
- (libraries core git-unix lwt cmdliner gitmaildir flock))
+ (libraries core git-unix lwt cmdliner gitmaildir gitmaildir_unix))

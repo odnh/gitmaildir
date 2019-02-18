@@ -1,0 +1,4 @@
+(library
+ (name        gitmaildir_unix)
+ (public_name gitmaildir_unix)
+ (libraries core flock))
