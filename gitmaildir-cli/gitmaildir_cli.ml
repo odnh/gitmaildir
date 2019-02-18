@@ -174,8 +174,10 @@ let init store =
   | Error e -> err_out e
 
 let init_store_arg =
-  let doc = "Path of directory to become new gitmaildir" in
-  Arg.(required & pos 0 (some string) None & info [] ~docv:"GIT_PATH" ~doc)
+  let doc = "Path of the gitmailidr to initialise" in
+  let env = Arg.env_var "GITMAILDIR_PATH" ~doc in
+  let doc = "The gitmaildir path" in
+  Arg.(value & opt string "." & info ["d"; "dir"] ~env ~docv:"PATH" ~doc)
 
 let init_info =
   let doc = "Initialise a gitmaildir" in
