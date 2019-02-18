@@ -173,6 +173,16 @@ let init store =
   | Ok _ -> ()
   | Error e -> err_out e
 
+let init_store_arg =
+  let doc = "Path of directory to become new gitmaildir" in
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"GIT_PATH" ~doc)
+
+let init_info =
+  let doc = "Initialise a gitmaildir" in
+  Term.info "init" ~doc ~exits:Term.default_exits
+
+let init_t = Term.(const init $ init_store_arg)
+
 (* gitmaildir command *)
 
 let gitmaildir_info =
@@ -191,7 +201,8 @@ let multi_command = Term.eval_choice (gitmaildir_t, gitmaildir_info)
     move_t, move_info;
     delete_t, delete_info;
     add_t, add_info;
-    convert_t, convert_info
+    convert_t, convert_info;
+    init_t, init_info
   ]
 
 let () = Term.exit @@ multi_command
