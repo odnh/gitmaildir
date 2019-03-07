@@ -1,6 +1,11 @@
 open Core
 open Cmdliner
 
+module Store = Git.Store.Make(Digestif.SHA1)(Git_unix.Fs)(Git.Inflate)(Git.Deflate)
+module Git_ops = Gitmaildir.Git_ops.Make(Store)
+module Locking_unix = Gitmaildir_unix.Locking_unix
+module Maildir = Gitmaildir.Maildir.Make_granular(Git_ops)(Locking_unix)
+
 let run_daemon _ _ = ()
 
 let store_arg =
