@@ -1,16 +1,12 @@
 #! /bin/bash
-cd "/Users/oliver/Google Drive/Cambridge/CST_II/project/testing/automated_timing"
+# Times how long to deliver n emails in parallel where n is between 20 and 1000 in steps of 20
 
-for i in `seq 10 10 200`
+for i in `seq 20 20 1000`
 do
-   mkdir test_files
-   cd test_files
-   seq -w 1 $i | xargs -n1 -I% sh -c 'dd if=/dev/urandom of=file.% count=1024 &> /dev/null'
-   cd ..
    mkdir gmd
    gitmaildir_cli init --dir=gmd
 
-   time echo test_files/* | xargs -P20 -n1 -I% sh -c 'cat % | gitmaildir_cli deliver --dir=gmd'
+   { time -p seq -f "1000rand/file.%04g" 0 $i | tr '\n' '\0' | xargs -P48 -n1 -I% -0 sh -c 'cat % | gitmaildir_cli deliver --dir=gmd' ; } 2>&1 | grep real | sed 's/real //' | awk 1 ORS='' >> log.txt
 
-   rm -rf test_files gmd
+   rm -rf gmd
 done
