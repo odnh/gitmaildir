@@ -1,7 +1,7 @@
 #! /bin/bash
-# Times how long to deliver n emails at different levels of parallelism (n is between 1 and 50 in steps of 5)
+# Times how long to deliver n emails at different levels of parallelism
 
-for i in `seq 1 5 50`
+for i in `seq 1 1 10`
 do
    mkdir gmd
    gitmaildir_cli init --dir=gmd
