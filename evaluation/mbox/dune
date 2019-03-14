@@ -1,0 +1,3 @@
+(executable
+ (name mbox_cli)
+ (libraries core cmdliner fpath flock))

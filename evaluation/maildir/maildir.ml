@@ -3,7 +3,7 @@ open Core
 let get_new_email_filename () =
   (string_of_int (int_of_float ((Unix.gettimeofday ()) *. 1_000_000.)))
   ^ "."
-  ^ (string_of_int (Random.bits ())) (*TODO: make randomness more inline with official spec*)
+  ^ (string_of_int (Random.bits ()))
   ^ "."
   ^ (Unix.gethostname ())
 
