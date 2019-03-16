@@ -1,0 +1,24 @@
+(library
+ (name maildir)
+ (modules maildir)
+ (libraries core))
+
+(library
+ (name mbox)
+ (modules mbox)
+ (libraries core flock))
+
+(executable
+ (name ocaml_test)
+ (modules ocaml_test)
+ (libraries core git-unix lwt cmdliner gitmaildir gitmaildir_unix mbox maildir))
+
+(executable
+ (name maildir_cli)
+ (modules maildir_cli)
+ (libraries core cmdliner maildir))
+
+(executable
+ (name mbox_cli)
+ (modules mbox_cli)
+ (libraries core cmdliner mbox))
