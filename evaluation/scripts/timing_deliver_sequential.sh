@@ -1,7 +1,7 @@
 #! /bin/bash
 # Times how long to deliver n emails sequentially
 
-for i in `seq 20 20 1000`
+for i in `seq 100 100 1000`
 do
    mkdir gmd
    gitmaildir_cli init --dir=gmd
