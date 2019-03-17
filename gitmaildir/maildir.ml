@@ -166,27 +166,31 @@ module Make_locking (G : Git_ops.S) (L : Locking) = struct
   module Lock = L
   open G
 
-  let lock = Lock.v ".global_lock"
+  let get_lock store = Lock.v ((Fpath.to_string @@ Store.root store) ^ "/.global_lock")
 
   let deliver_mail store input =
+    let lock = get_lock store in
     Lwt.return_unit >|= (fun () ->
     Lock.lock lock) >>= (fun () ->
     Unsafe.deliver_mail store input) >|= (fun a ->
     Lock.unlock lock; a)
 
   let delete_mail store path =
+    let lock = get_lock store in
     Lwt.return_unit >|= (fun () ->
     Lock.lock lock) >>= (fun () ->
     Unsafe.delete_mail store path) >|= (fun a ->
     Lock.unlock lock; a)
 
   let move_mail store path new_path =
+    let lock = get_lock store in
     Lwt.return_unit >|= (fun () ->
     Lock.lock lock) >>= (fun () ->
     Unsafe.move_mail store path new_path) >|= (fun a ->
     Lock.unlock lock; a)
 
   let add_mail_time time store path input =
+    let lock = get_lock store in
     Lwt.return_unit >|= (fun () ->
     Lock.lock lock) >>= (fun () ->
     Unsafe.add_mail_time time store path input) >|= (fun a ->
@@ -230,10 +234,11 @@ module Make_granular (G : Git_ops.S) (L : Locking) = struct
   module Lock = L
   open G
 
-  let lock = Lock.v ((Fpath.to_dir_path Store.root) ^ ".global_lock")
+  let get_lock store = Lock.v ((Fpath.to_string @@ Store.root store) ^ "/.global_lock")
 
   (** trys to run a function on the previous master tree and commit the new one. Retries until success *)
   let rec try_with_commit f master_commit store =
+    let lock = get_lock store in
     let master_ref = Git.Reference.master in
     f master_commit
     >>= (fun hash_result -> Lock.lock lock; Lwt.return hash_result) (* START LOCK *)
