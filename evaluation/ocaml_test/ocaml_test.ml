@@ -44,28 +44,64 @@ let sequential_test ~f ~store ~data ~log =
   let log_file = Out_channel.create ~append:true log in
   Out_channel.output_string log_file total_time
 
-
 let parallel_test ~f ~store ~data ~log =
-  let test_files = Sys.readdir data in
-  let t_start = Unix.gettimeofday () in
   let rec parallel_exe = function
     | [] -> ()
     | x::xs ->
         (match Unix.fork () with
         | `In_the_child -> f store (data ^ "/" ^ x); Unix.exit_immediately 0
         | `In_the_parent pid -> parallel_exe xs; Unix.waitpid_exn pid) in
+  let test_files = Sys.readdir data in
+  let t_start = Unix.gettimeofday () in
   parallel_exe (Array.to_list test_files);
   let t_end = Unix.gettimeofday () in
   let total_time = string_of_float @@ t_end -. t_start in
   let log_file = Out_channel.create ~append:true log in
   Out_channel.output_string log_file total_time
 
-(*let parallel_params_test ~f ~store ~data ~log =
-  ()*)
+let parallel_n_test ~f ~store ~data ~log ~threads =
+  let mutex = Mutex.create () in
+  let condition = Condition.create () in
+  let counter = ref threads in
+  let enter () =
+    Mutex.lock mutex;
+    if !counter > 0 then
+      counter := !counter - 1
+    else
+      Condition.wait condition mutex
+  in
+  let exit () =
+    counter := !counter + 1;
+    Condition.signal condition;
+    Mutex.unlock mutex in
+  let rec parallel_exe = function
+    | [] -> ()
+    | x::xs ->
+        (match enter (); Unix.fork () with
+        | `In_the_child -> f store (data ^ "/" ^ x); exit (); Unix.exit_immediately 0
+        | `In_the_parent pid -> parallel_exe xs; Unix.waitpid_exn pid) in
+  let test_files = Sys.readdir data in
+  let t_start = Unix.gettimeofday () in
+  parallel_exe (Array.to_list test_files);
+  let t_end = Unix.gettimeofday () in
+  let total_time = string_of_float @@ t_end -. t_start in
+  let log_file = Out_channel.create ~append:true log in
+  Out_channel.output_string log_file total_time
 
 (* Command-line interface *)
 
-let chosen_test store data log = parallel_test ~f:md_deliver ~store ~data ~log
+let chosen_test store data log store_type test =
+  let backend = match store_type with
+                | "gmd" -> gmd_deliver
+                | "md" -> md_deliver
+                | "mb" -> mb_deliver
+                | _ -> failwith "Not valid backend" in
+  let test_type = match test with
+                  | "tdp" -> parallel_test
+                  | "tds" -> sequential_test
+                  | "tdn" -> parallel_n_test ~threads:10
+                  | _ -> failwith "Not valid test type" in
+  test_type ~f:backend ~store ~data ~log
 
 open Cmdliner
 
@@ -81,10 +117,18 @@ let log_arg =
   let doc = "Path of file to write results to" in
   Arg.(required & pos 2 (some string) None & info [] ~docv:"LOG_PATH" ~doc)
 
+let type_arg =
+  let doc = "The type of storage backend to use" in
+  Arg.(required & pos 3 (some string) None & info [] ~docv:"STORE_TYPE" ~doc)
+
+let test_arg =
+  let doc = "The test to run" in
+  Arg.(required & pos 4 (some string) None & info [] ~docv:"TEST_NAME" ~doc)
+
 let execute_info =
   let doc = "Execute the test" in
   Term.info "execute" ~doc ~exits:Term.default_exits
 
-let execute_t = Term.(const chosen_test $ store_arg $ data_arg $ log_arg)
+let execute_t = Term.(const chosen_test $ store_arg $ data_arg $ log_arg $ type_arg $ test_arg)
 
 let () = Term.exit @@ Term.eval (execute_t, execute_info)
