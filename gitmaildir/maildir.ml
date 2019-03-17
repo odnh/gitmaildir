@@ -230,7 +230,7 @@ module Make_granular (G : Git_ops.S) (L : Locking) = struct
   module Lock = L
   open G
 
-  let lock = Lock.v ".global_lock"
+  let lock = Lock.v ((Fpath.to_dir_path Store.root) ^ ".global_lock")
 
   (** trys to run a function on the previous master tree and commit the new one. Retries until success *)
   let rec try_with_commit f master_commit store =
