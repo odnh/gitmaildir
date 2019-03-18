@@ -6,8 +6,7 @@ module Mb = Mbox
 
 module Store = Git.Store.Make(Digestif.SHA1)(Git_unix.Fs)(Git.Inflate)(Git.Deflate)
 module Git_ops = Gitmaildir.Git_ops.Make(Store)
-(*module Locking_unix = Gitmaildir_unix.Locking_unix
-module Maildir = Gitmaildir.Maildir.Make_granular(Git_ops)(Locking_unix)*)
+module Maildir = Gitmaildir.Maildir.Make_granular(Git_ops)(Locking_unix)
 module Maildir = Gitmaildir.Maildir.Make_unsafe(Git_ops)
 
 let store_of_string path =
@@ -60,35 +59,6 @@ let parallel_test ~f ~store ~data ~log =
   let log_file = Out_channel.create ~append:true log in
   Out_channel.output_string log_file total_time
 
-let parallel_n_test ~f ~store ~data ~log ~threads =
-  let mutex = Mutex.create () in
-  let condition = Condition.create () in
-  let counter = ref threads in
-  let enter () =
-    Mutex.lock mutex;
-    if !counter > 0 then
-      counter := !counter - 1
-    else
-      Condition.wait condition mutex
-  in
-  let exit () =
-    counter := !counter + 1;
-    Condition.signal condition;
-    Mutex.unlock mutex in
-  let rec parallel_exe = function
-    | [] -> ()
-    | x::xs ->
-        (match enter (); Unix.fork () with
-        | `In_the_child -> f store (data ^ "/" ^ x); exit (); Unix.exit_immediately 0
-        | `In_the_parent pid -> parallel_exe xs; Unix.waitpid_exn pid) in
-  let test_files = Sys.readdir data in
-  let t_start = Unix.gettimeofday () in
-  parallel_exe (Array.to_list test_files);
-  let t_end = Unix.gettimeofday () in
-  let total_time = string_of_float @@ t_end -. t_start in
-  let log_file = Out_channel.create ~append:true log in
-  Out_channel.output_string log_file total_time
-
 (* Command-line interface *)
 
 let chosen_test store data log store_type test threads =
@@ -129,7 +99,7 @@ let test_arg =
 let threads_arg =
   let doc = "Number of threads to use" in
   let env = Arg.env_var "GMD_THREADS" ~doc in
-  Arg.(value & opt string "4" & info ["t"; "threads"] ~env ~docv:"THREADS" ~doc)
+  Arg.(value & opt int 4 & info ["t"; "threads"] ~env ~docv:"THREADS" ~doc)
 
 let execute_info =
   let doc = "Execute the test" in
