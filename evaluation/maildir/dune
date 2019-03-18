@@ -1,3 +1,0 @@
-(executable
- (name maildir_cli)
- (libraries core cmdliner fpath str))
