@@ -9,8 +9,8 @@
  (libraries core flock))
 
 (executable
- (name ocaml_test)
- (modules ocaml_test)
+ (name performance_test)
+ (modules performance_test)
  (libraries core git-unix lwt cmdliner gitmaildir gitmaildir_unix mbox maildir))
 
 (executable

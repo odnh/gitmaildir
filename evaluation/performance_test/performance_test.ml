@@ -91,7 +91,7 @@ let parallel_n_test ~f ~store ~data ~log ~threads =
 
 (* Command-line interface *)
 
-let chosen_test store data log store_type test =
+let chosen_test store data log store_type test threads =
   let backend = match store_type with
                 | "gmd" -> gmd_deliver
                 | "md" -> md_deliver
@@ -100,7 +100,7 @@ let chosen_test store data log store_type test =
   let test_type = match test with
                   | "tdp" -> parallel_test
                   | "tds" -> sequential_test
-                  | "tdn" -> parallel_n_test ~threads:10
+                  | "tdn" -> parallel_n_test ~threads
                   | _ -> failwith "Not valid test type" in
   test_type ~f:backend ~store ~data ~log
 
@@ -126,10 +126,15 @@ let test_arg =
   let doc = "The test to run" in
   Arg.(required & pos 4 (some string) None & info [] ~docv:"TEST_NAME" ~doc)
 
+let threads_arg =
+  let doc = "Number of threads to use" in
+  let env = Arg.env_var "GMD_THREADS" ~doc in
+  Arg.(value & opt string "4" & info ["t"; "threads"] ~env ~docv:"THREADS" ~doc)
+
 let execute_info =
   let doc = "Execute the test" in
   Term.info "execute" ~doc ~exits:Term.default_exits
 
-let execute_t = Term.(const chosen_test $ store_arg $ data_arg $ log_arg $ type_arg $ test_arg)
+let execute_t = Term.(const chosen_test $ store_arg $ data_arg $ log_arg $ type_arg $ test_arg $ threads_arg)
 
 let () = Term.exit @@ Term.eval (execute_t, execute_info)
