@@ -45,8 +45,6 @@ module type S = sig
   val get_hash_at_path : Store.t -> Store.Hash.t -> Git.Path.t
                          -> (Store.Hash.t, error) Lwt_result.t
 
-  val checkout_to_dir : Store.t -> Store.Hash.t -> Fpath.t -> (unit, error) Lwt_result.t
-
   val init_empty_blob : Store.t -> (unit, error) Lwt_result.t
 end
 
@@ -273,10 +271,6 @@ module Make (Store : Git.Store.S) = struct
       | Commit c -> Ok c
       | _ -> Error (`Not_a_commit commit))
     >>|| Store.Value.Commit.tree
-
-  (* TODO: implement *)
-  let checkout_to_dir _ _ _ =
-    Lwt.return_ok ()
 
   let init_empty_blob store =
     let blob = Store.Value.Blob.of_string "" |> Store.Value.blob in

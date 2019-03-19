@@ -1,4 +1,6 @@
 (library
  (name        gitmaildir)
  (public_name gitmaildir)
- (libraries core git-unix lwt email_message))
+ (inline_tests)
+ (preprocess (pps ppx_inline_test))
+ (libraries core git-unix lwt))

@@ -62,9 +62,6 @@ module type S = sig
 
   (** inits a gitmaildir (ie empty git repository with initial commit) *)
   val init_gitmaildir : Store.t -> (unit, error) Lwt_result.t
-
-  (** converts an existing maildir to a gitmaildir *)
-  val convert_maildir : Store.t -> Fpath.t -> (unit, error) Lwt_result.t
 end
 
 (** Maildir functionality returning a commit object *)
