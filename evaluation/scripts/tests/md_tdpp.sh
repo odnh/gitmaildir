@@ -1,7 +1,7 @@
 #! /bin/bash
 # Times how long to deliver n emails at different levels of parallelism
 
-for i in `seq 1 1 10`
+for i in `seq 1 1 20`
 do
    mkdir gmd
    mkdir gmd/{tmp,cur,new}
