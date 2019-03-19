@@ -24,3 +24,6 @@ setup.log
 
 # opam files
 *.install
+
+# For testing
+evaluation/performance_test/testdir
