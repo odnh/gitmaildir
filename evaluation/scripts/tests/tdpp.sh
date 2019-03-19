@@ -8,7 +8,7 @@ do
 
    echo -n "$i " >> log.txt
 
-   { time -p find 1000rand/ -mindepth 1 -print0 | xargs -P$i -n1 -I% -0 sh -c 'cat % | gitmaildir_cli deliver --dir=gmd' ; } 2>&1 | grep real | sed 's/real //' | awk 1 ORS='' >> log.txt
+   { time -p find data_75kB/ -mindepth 1 -print0 | xargs -P$i -n1 -I% -0 sh -c 'cat % | gitmaildir_cli deliver --dir=gmd' ; } 2>&1 | grep real | sed 's/real //' | awk 1 ORS='' >> log.txt
 
    echo >> log.txt # adds new line
 
