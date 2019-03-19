@@ -1,0 +1,7 @@
+(executables
+  (names     gitmaildir_tests)
+  (libraries alcotest git-unix gitmaildir gitmaildir_unix))
+
+(alias
+  (name runtest)
+  (action (run ./gitmaildir_tests.exe)))

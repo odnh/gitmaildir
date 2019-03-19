@@ -20,9 +20,7 @@ let store_of_string path =
   >|= function
     | Ok s -> s
     | Error _ -> failwith "Bad Store"
-
-(* extra cli only functions *)
-
+    
 let convert_maildir store path =
   let rec get_all_files result = function
     | f::fs when Sys.is_directory f = `Yes ->
@@ -148,7 +146,7 @@ let convert store path =
   let path = Fpath.v path in
   let init_lwt = Maildir.init_gitmaildir store in
   match Lwt_main.run init_lwt with
-  | Ok () -> Lwt_main.run @@  Maildir.convert_maildir store path |> (fun _ -> ())(*convert_maildir store path*)
+  | Ok () -> convert_maildir store path
   | Error e -> err_out e
 
 let convert_store_arg =

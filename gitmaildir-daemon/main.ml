@@ -6,6 +6,7 @@ module Git_ops = Gitmaildir.Git_ops.Make(Store)
 module Lock = Gitmaildir_unix.Locking_unix
 module Maildir = Gitmaildir.Maildir.Make_granular(Git_ops)(Locking_unix)
 
+(*
 let lock = Lock.v ".global_lock"
 
 let diff_trees store dir =
@@ -25,7 +26,8 @@ let sync store dir =
   (* now do the same in other direction *)
   Lock.unlock lock
 
-let run_daemon _ _ = ()
+let run_daemon store dir = ()
   (* run synchronisation *)
   (* then enter filesystem watching *)
-
+  sync store dir;
+*)

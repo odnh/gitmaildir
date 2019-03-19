@@ -58,9 +58,6 @@ module type S = sig
   val get_hash_at_path : Store.t -> Store.Hash.t -> Git.Path.t
                          -> (Store.Hash.t, error) Lwt_result.t
 
-  (** Replaces the contents of the given path with the tree at the given commit *)
-  val checkout_to_dir : Store.t -> Store.Hash.t -> Fpath.t -> (unit, error) Lwt_result.t
-
   (** creates a single commit of an empty blob in a new git directory *)
   val init_empty_blob : Store.t -> (unit, error) Lwt_result.t
 end
