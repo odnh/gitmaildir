@@ -4,6 +4,7 @@
 for i in `seq 100 100 1000`
 do
    mkdir gmd
+   mkdir gmd/{new,cur,tmp}
 
    echo -n "$i " >> log.txt
 

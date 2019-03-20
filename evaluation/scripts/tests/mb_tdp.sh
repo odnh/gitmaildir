@@ -3,7 +3,7 @@
 
 for i in `seq 100 100 1000`
 do
-   mkdir gmd
+   touch gmd
 
    echo -n "$i " >> log.txt
 

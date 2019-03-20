@@ -1,9 +1,9 @@
 #!/bin/bash
 run_test () {
-  for i in `seq 1 10`;
+  for i in `seq 1 1`;
   do
     bash $1
-    base = `basename $1`
+    base="$(basename $1)"
     mv log.txt $base.$i.log
   done
 
