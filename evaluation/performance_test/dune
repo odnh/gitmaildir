@@ -1,7 +1,7 @@
 (library
  (name maildir)
  (modules maildir)
- (libraries core))
+ (libraries core str))
 
 (library
  (name mbox)

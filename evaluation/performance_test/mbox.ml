@@ -62,6 +62,17 @@ let move store old_mail new_mail =
   Flock.flock file Flock.LOCK_UN;
   Unix.close file
 
+let retrieve store mail =
+  let file = Unix.openfile ~mode:[O_RDWR] store in
+  Flock.flock file Flock.LOCK_EX;
+  let ic = Unix.in_channel_of_descr file in
+  let delimiter = "FROM: " ^ mail in
+  (match get_line_coords ic delimiter with
+  | Some (_, _) -> ()
+  | None -> (); failwith "No such mail");
+  Flock.flock file Flock.LOCK_UN;
+  Unix.close file
+
 let delete store mail =
   let file = Unix.openfile ~mode:[O_RDWR] store in
   Flock.flock file Flock.LOCK_EX;

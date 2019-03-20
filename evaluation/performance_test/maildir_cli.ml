@@ -31,6 +31,18 @@ let move_info =
 
 let move_t = Term.(const Maildir.move $ store_arg $ move_path_arg $ move_new_path_arg)
 
+(* retrieve command *)
+
+let retrieve_path_arg =
+  let doc = "path of file to retrieve" in
+  Arg.(required & pos 0 (some string) None & info [] ~docv:"PATH" ~doc)
+
+let retrieve_info =
+  let doc = "retrieve a file from the mbox" in
+  Term.info "retrieve" ~doc ~exits:Term.default_exits
+
+let retrieve_t = Term.(const Maildir.retrieve $ store_arg $ retrieve_path_arg)
+
 (* delete command *)
 
 let delete_path_arg =

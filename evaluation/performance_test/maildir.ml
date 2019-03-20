@@ -23,10 +23,16 @@ let deliver input store =
   Unix.unlink path
 
 let move store old_mail new_mail =
-  let old_path = store ^ "/cur/" ^ old_mail in
+  let old_path = store ^ "/new/" ^ old_mail in
   let new_path = store ^ "/cur/" ^ new_mail in
   Unix.link ~target:old_path ~link_name:new_path ();
   Unix.unlink old_path
+
+let retrieve store mail =
+  let path = store ^ "/new/" ^ mail in
+  let ic = In_channel.create path in
+  let _ = In_channel.input_all ic in
+  In_channel.close ic
 
 let delete store mail =
   let path = store ^ "/cur/" ^ mail in
