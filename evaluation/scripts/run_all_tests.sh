@@ -1,6 +1,6 @@
 #!/bin/bash
 run_test () {
-  for i in `seq 1 1`;
+  for i in `seq 5 8`;
   do
     bash $1
     base="$(basename $1)"
@@ -10,7 +10,7 @@ run_test () {
   mv *.log ../all_logs/
 }
 
-for i in ../scripts/tests/*;
+for i in ../scripts/tests/*tmp*;
 do
   run_test $i
 done

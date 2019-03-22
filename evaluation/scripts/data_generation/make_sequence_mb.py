@@ -1,8 +1,10 @@
+import os
+
 sequence = [line.rstrip('\n') for line in open("move_sequence_order.txt")]
 sequence = [int(elem) for elem in sequence]
 
 mail_names = []
-with open("mbox") as f:
+with open("mb_data") as f:
     for line in f:
         if line.startswith("FROM:"):
             mail_names.append(line[6:])

@@ -1,3 +1,5 @@
+import os
+
 # This is the same as make_sequence.md make sure to checkout the gitmaildir before use
 sequence = [line.rstrip('\n') for line in open("move_sequence_order.txt")]
 sequence = [int(elem) for elem in sequence]

@@ -1,3 +1,5 @@
+import os
+
 sequence = [line.rstrip('\n') for line in open("move_sequence_order.txt")]
 sequence = [int(elem) for elem in sequence]
 
