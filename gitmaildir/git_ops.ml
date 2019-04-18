@@ -46,6 +46,8 @@ module type S = sig
                          -> (Store.Hash.t, error) Lwt_result.t
 
   val init_empty_blob : Store.t -> (unit, error) Lwt_result.t
+
+  val checkout_blob : Store.t -> Fpath.t -> (unit, error) Lwt_result.t 
 end
 
 module Make (Store : Git.Store.S) = struct
@@ -56,6 +58,7 @@ module Make (Store : Git.Store.S) = struct
   type error = [
     | `Not_a_tree of Store.Hash.t
     | `Not_a_commit of Store.Hash.t
+    | `Not_a_blob of Store.Hash.t
     | `No_entry_in_tree of string * Tree.t
     | `Invalid_path of Git.Path.t
     | Store.error ]
@@ -63,6 +66,7 @@ module Make (Store : Git.Store.S) = struct
   let pp_error ppf = function
     | `Not_a_tree hash -> Fmt.pf ppf "Not a tree: %a" Store.Hash.pp hash
     | `Not_a_commit hash -> Fmt.pf ppf "Not a commit: %a" Store.Hash.pp hash
+    | `Not_a_blob hash -> Fmt.pf ppf "Not a blob: %a" Store.Hash.pp hash
     | `No_entry_in_tree (name, tree) -> Fmt.pf ppf "No entry: %a in tree: %a" Format.pp_print_string name Tree.pp tree
     | `Invalid_path path -> Fmt.pf ppf "Invalid path in store: %a" Git.Path.pp path
     | #Store.error as err -> Fmt.pf ppf "%a" Store.pp_error err
@@ -280,4 +284,8 @@ module Make (Store : Git.Store.S) = struct
     >>== write_value store
     >>== commit_tree store [] "init"
     >>== update_ref store Git.Reference.master
+
+
+  let checkout_blob store hash =
+    Store.Value
 end

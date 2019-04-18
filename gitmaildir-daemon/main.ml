@@ -9,67 +9,6 @@ module Maildir = Gitmaildir.Maildir.Make_granular(Git_ops)(Locking_unix)
 let lock = Lock.v ".global_lock"
 (*let get_lock store = Lock.v ((Fpath.to_string @@ Store.root store) ^ "/.global_lock")*)
 
-(*
-
-let read_git_tree store hash =
-  (* Read git tree, return entries *)
-  Store.read store hash >>|| (function
-    | Ok (Store.Value.Tree t) -> Ok t 
-    | _ -> Error (`Not_a_tree hash)) >>||
-  Store.Value.Tree.to_list
-
-let read_dir_tree root path =
-  (* Read dir in as list, (w name and whether file/folder) *)
-  let full_path = root ^ "/" ^ path in
-  let dir_contents = Sys.readdir full_path |> Array.to_list |> List.map ~f:(f -> path ^ "/" ^ f) in
-  let is_dir = List.map dir_contents ~f:(fun f -> if Sys.is_directory_exn (full_path ^ "/" ^ f) then (f,`Dir) else (f,`File)) in
-  is_dir
-
-(* Helper funtions for finding difference between lists *)
-let tree_elem_in_dir elem dir = List.fold dir ~init:false ~f:(fun a f -> a || Store.Value.Tree.node elem = (fst f))
-let dir_elem_in_tree elem tree = List.fold tree ~init:false ~f:(fun a f -> a || Store.Value.Tree.node f = (fst elem))
-
-let read_dir_recurse root path =
-  (* returns all elements below path in maildir at root *)
-  let full_path = root ^ "/" ^ path in
-  let dir_contents = Sys.readdir full_path |> Array.to_list |> List.map ~f:(f -> path ^ "/" ^ f) in
-  let dirs = List.filter dir_contents ~f:(fun f -> Sys.is_directory_exn (full_path ^ "/" ^ f)) in
-  List.map dirs ~f:(read_dir_recurse root) |> List.concat |> List.append dir_contents
-
-let read_git_recurse store hash path =
-  (* returns all elements below tree hash in gitmaildir store, paired with their path *)
-  let entries = Store.read store hash >>|| (function
-    | Ok (Store.Value.Tree t) -> Ok t 
-    | _ -> Error (`Not_a_tree hash)) >>||
-  Store.Value.Tree.to_list in
-  let subtrees = entries >>|| List.filter ~f:(fun e ->
-    match Store.Value.Tree.perm e with
-    | `Dir -> true
-    | _ -> false)
-  let entries_with_path = entries >>|| List.map ~f:(fun e -> (path, e)) in
-  List.map subtrees ~f:(fun e ->
-    read_git_recurse store (Store.Value.Tree.node e) (path ^ "/" ^ (Store.Value.Tree.name e)))
-  |> List.concat |> List.append entries_with_path
-
-let diff_trees store root hash path =
-  (* General idea:
-    * Call recursively on dirs and hashes ie:
-      * On find difference, add to list, similarity don't
-      * If that similarity is a dir/tree then recurse
-      * If the difference is a dir/tree, call different func returning all contents *)
-  let git_tree = read_git_tree store hash in
-  let dir_tree = read_dir_tree root path in
-  let unique_git = List.filter git_tree ~f:(fun x -> not (tree_elem_in_dir x dir_tree) in
-  let unique_dir = List.filter dir_tree ~f:(fun x -> not (dir_elem_in_tree x git_tree) in
-  let shared_subdirs = List.filter git_tree ~f:(WRITE FUNC) in
-  (* TODO: deal with shared & unique dirs *)
-
-  (* TODO: take into account git history for deletions *)
-*)
-
-(* New idea: create data struct of both, diff func just works on these, read in and read out done separately *)
-(* Tree format: list of file or named sublist *)
-
 type file_tree = File of string | Dir of string * (file_tree list)
 
 (** If passed a diir, returns its name, otherwise raises an exception *)
@@ -89,20 +28,19 @@ let ft_split ft =
 
 (** Returns the name associated with the top level of the file tree *)
 val get_ft_name : file_tree -> string
-let get_ft_name =
+let get_ft_name ft =
   match ft with
   | File f -> f
   | Dir (s, _) -> s
 
-
-val git_to_maildir_write : string -> file_tree list -> unit
-let git_to_maildir_write path files =
-
-val delete_in_maildir : string -> file_tree list -> unit
-let delete_in_maildir path files =
-
-val maildir_to_git_write : string -> file_tree list -> unit
-let maildir_to_git_write path files =
+(** Takes a file_tree and returns a list of all the paths contained within *)
+val file_tree_to_paths : file_tree -> string list
+let file_tree_to_paths ft =
+  let rec aux ft =
+    match ft with
+    | File f -> [f]
+    | Dir (n, l) -> List.map ft ~f:aux |> List.concat |> List.map ~f:(fun s -> n ^ "/" ^ s) in
+  aux ft
 
 (** Returns the unique entries of each list, (must be lists of file_trees) *)
 val unique_entries : file_tree list -> file_tree list -> (file_tree list) * (file_tree list)
@@ -117,9 +55,9 @@ let unique_entries l1 l2 =
   let unique_l2 = List.filter l2 ~f:(fun x -> not (is_member x l2)) in
   (unique_l1, unique_l2)
 
-(** Returns the shared dir entries in a list of file_trees along with the dir name *)
-val shared_dir_entries : file_tree list -> file_tree list -> (file_tree * file_tree * string) list
-let shared_dir_entries l1 l2 =
+(** Returns the shared dir entries in a list of file_trees *)
+val shared_entries : file_tree list -> file_tree list -> (file_tree * file_tree) list
+let shared_entries l1 l2 =
   let get_member elem l =
     match elem with
     | Dir (n1, l1) ->
@@ -136,7 +74,7 @@ let shared_dir_entries l1 l2 =
     fun acc elem ->
       match get_member elem l2 with
       | None -> acc
-      | Some elem2 -> (elem, elem2, get_ft_name elem)::acc) in
+      | Some elem2 -> (elem, elem2)::acc) in
   shared
 
 (** Reads a git store in as a file_tree (given a commit) *)
@@ -173,44 +111,71 @@ let rec file_tree_of_maildir root =
     List.map dirs ~f:(fun d -> Dir (d, aux (path ^ "/" ^ d))) |> List.append files_wrapped in
   "" |> aux |> (fun x -> Dir ("", x))
 
-(** Takes a git file_tree and maildir file_tree, and synchronises any differences *)
-val diff_trees : file_tree -> file_tree -> string list
-let rec diff_trees git_tree maildir_tree =
-  let aux path gt mt =
-    let git_dirs, git_files = ft_split git_tree in
-    let maildir_dirs, maildir_files = ft_split maildir_tree in
-    (* Sort out files *)
-    let unique_git_f, unique_maildir_f = unique_entries git_files maildir_files in
-    let delete_in_maildir_f, put_in_git_f = in_prev_commit unique_maildir_f in
-    git_to_maildir_write path unique_git_f;
-    delete_in_maildir path delete_in_maildir_f;
-    maildir_to_git_write path put_in_git_f;
+(** Takes two file_trees and returns a file_tree for each tree of its unique elements **)
+val diff_trees : file_tree -> file_tree -> (file_tree * file_tree)
+let diff_trees tree_a tree_b =
+  let rec aux tree_a tree_b =
+    (* prepare data *)
+    let dir_name = get_ft_name tree_a in
+    let a_files, a_dirs = ft_split tree_a in
+    let b_files, b_dirs = ft_split tree_b in
+    (* diff data *)
+    let unique_a_files, unique_b_files = unique_entries a_files, b_files in
+    let unique_a_dirs, unique_b_dirs = unique_entries a_dirs, b_dirs in
+    let shared_a_dirs, shared_b_dirs = shared_entries a_dirs, b_dirs in
+    (* act on subdirs *)
+    let recursed_a, recursed_b = List.zip_exn shared_a_dirs shared_b_dirs |> List.map ~f:(fun (a,b) -> aux a b)
+    (* compile and return results *)
+    let a_list = unique_a_files @ unique_a_dirs @ recursed_a in
+    let b_list = unique_b_files @ unique_b_dirs @ recursed_b in
+    let diff = (Dir (dir_name, a_list), Dir (dir_name, b_list)) in
+    diff
+  in
+  aux tree_a tree_b
 
-    (* Sort out dirs *)
-    let unique_git_d, unique_maildir_d = unique_entries git_dirs maildir_dirs in
-    git_to_maildir_write path unique_git_d;
-    delete_in_maildir path delete_in_maildir_d;
-    maildir_to_git_write path put_in_git_d;
+(** Returns true if paths exists in tree for parent of given commit, false otherwise *)
+val path_exists_in_prev_commit : Store.t -> Store.Hash.t -> string -> bool
+let path_exists_in_prev_commit store commit path =
+  Git_ops.get_commit_parents store commit
+  >>=| (List.hd |> function Some h -> Ok h | None -> Error `Not_found) in
+  >>|| Git_ops.get_commit_tree store parent in
+  >>|| fun tree -> Git_ops.get_hash_at_path store tree Git.Path.(v path)
+  >|= function
+       | Ok _ -> true
+       | Error _ -> false
 
-    (* Recursive step *)
-    let shared_dirs = shared_dir_entries git_dirs maildir_dirs in(*TODO: write func*)
-    List.iter shared_dirs ~f:(fun (a,b,name) -> aux (path ^ "/" ^ name) a b) in
-  aux "" git_tree maildir_tree
+(** Transfer items listed in file tree to git store from maildir store *)
+val sync_maildir_to_git : Store.t -> string -> file_tree -> ()
+let sync_maildir_to_git git_store maildir_path ft =
+  let sync_path path =
+    In_channel.create (maildir_path ^ "/" ^ path) |> fun input ->
+    Maildir.add_mail git_store (Fpath.v (maildir_path ^ "/" ^ path)) input |> fun lwt ->
+    let _ = Lwt_main.run lwt in
+    In_channel.close input in
+  let delete_path path =
+    Sys.remove (maildir_path ^ "/" ^ path) in
+  let paths = file_tree_to_paths ft in
+  let to_delete = List.filter paths ~f:(path_exists_in_prev_commit git_store commit) in
+  let to_sync = List.filter paths ~f:(fun elem1 -> List.exists to_delete ~f:(fun elem2 -> elem1 = elem2)) in
+  (* delete unneeded *)
+  List.iter to_delete ~f:delete_path
+  (* sync new emails *)
+  List.iter to_sync ~f:sync_path
 
-let add_to_gitmaildir_fold ~store errors file =
-  (* Adds contents of file to store or bypasses if error exists *)
-  errors >>== fun (() ->
-  In_channel.create file |> fun (input ->
-  Maildir.add_mail store file input |> fun (result ->
-  In_channel.close input;
-  result (* May have problem of closing input before it's actually used *)
-
-let add_to_maildir_fold ~store errors file =
-  (* Adds contents of hash at path: 'file' to maildir or bypasses if error exists *)
-  errors >>== fun(() ->
-  In_channel.create file |> fun (in
-  (* TODO: complete *)
-
+(** Transfer items listed in file_tree to maildir store from git store, but choosing to delete depending on git history *)
+val sync_git_to_maildir : Store.t -> string -> file_tree -> ()
+let sync_git_to_maildir git_store commit maildir_path ft =
+  let sync_path path =
+    let lwt_result_string = Git_ops.get_commit_tree git_store commit >>||
+      fun tree -> Git_ops.get_hash_at_path git_store tree path >>||
+      fun hash -> Git_ops.read_blob git_store hash in
+    let file = Out_channel.create (maildir_path ^ "/" ^ path) in
+      (match Lwt_main.run lwt_result_string with
+      | Ok s -> Out_channel.output_string s
+      | Error _ -> ());
+      Out_channel.close file
+  let paths = file_tree_to_paths ft in
+  List.iter paths ~f:sync_path
 
 let sync store dir =
   Lock.lock lock;
