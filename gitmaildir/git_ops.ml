@@ -47,7 +47,7 @@ module type S = sig
 
   val init_empty_blob : Store.t -> (unit, error) Lwt_result.t
 
-  val checkout_blob : Store.t -> Fpath.t -> (unit, error) Lwt_result.t 
+  val read_blob : Store.t -> Store.Hash.t -> (string, error) Lwt_result.t 
 end
 
 module Make (Store : Git.Store.S) = struct
@@ -285,7 +285,13 @@ module Make (Store : Git.Store.S) = struct
     >>== commit_tree store [] "init"
     >>== update_ref store Git.Reference.master
 
-
-  let checkout_blob store hash =
-    Store.Value
+  let read_blob store hash =
+    let data = Store.read store hash in
+    let match_blob = (function
+      | Ok (Store.Value.Blob b) -> Ok b
+      | Error e -> Error (lift_error e)
+      | _ -> Error (`Not_a_blob hash )) in
+    data
+    >|= match_blob
+    >>|| Store.Value.Blob.to_string
 end

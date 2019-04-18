@@ -62,7 +62,7 @@ module type S = sig
   val init_empty_blob : Store.t -> (unit, error) Lwt_result.t
 
   (** Checkout a blob to the location specified in path *)
-  val read_blob : Store.t -> Fpath.t -> (string, error) Lwt_result.t 
+  val read_blob : Store.t -> Store.Hash.t -> (string, error) Lwt_result.t 
 end
 
 module Make (Store : Git.Store.S) : sig

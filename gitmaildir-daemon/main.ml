@@ -79,9 +79,9 @@ let shared_entries l1 l2 =
   shared
 
 (** Reads a git store in as a file_tree (given a commit) *)
-val file_tree_of_git : Store.t -> Store.Hash.t -> (file_tree, Store.error) * Lwt_result.t
+val file_tree_of_git : Store.t -> Store.Hash.t -> (file_tree * Store.error)  Lwt_result.t
 let rec file_tree_of_git store commit =
-  module SVT = Store.Value.Tree in
+  let module SVT = Store.Value.Tree in
   let rec aux hash =
     let entries = Store.read store hash >>|| (function
       | Ok (Store.Value.Tree t) -> Ok t
@@ -125,7 +125,7 @@ let diff_trees tree_a tree_b =
     let unique_a_dirs, unique_b_dirs = unique_entries a_dirs, b_dirs in
     let shared_a_dirs, shared_b_dirs = shared_entries a_dirs, b_dirs in
     (* act on subdirs *)
-    let recursed_a, recursed_b = List.zip_exn shared_a_dirs shared_b_dirs |> List.map ~f:(fun (a,b) -> aux a b)
+    let recursed_a, recursed_b = List.zip_exn shared_a_dirs shared_b_dirs |> List.map ~f:(fun (a,b) -> aux a b) in
     (* compile and return results *)
     let a_list = unique_a_files @ unique_a_dirs @ recursed_a in
     let b_list = unique_b_files @ unique_b_dirs @ recursed_b in
@@ -138,15 +138,15 @@ let diff_trees tree_a tree_b =
 val path_exists_in_prev_commit : Store.t -> Store.Hash.t -> string -> bool
 let path_exists_in_prev_commit store commit path =
   Git_ops.get_commit_parents store commit
-  >>=| (List.hd |> function Some h -> Ok h | None -> Error `Not_found) in
-  >>|| Git_ops.get_commit_tree store parent in
+  >>=| (List.hd |> function Some h -> Ok h | None -> Error `Not_found)
+  >>|| Git_ops.get_commit_tree store parent
   >>|| fun tree -> Git_ops.get_hash_at_path store tree Git.Path.(v path)
   >|= function
        | Ok _ -> true
        | Error _ -> false
 
 (** Transfer items listed in file tree to git store from maildir store *)
-val sync_maildir_to_git : Store.t -> string -> file_tree -> ()
+val sync_maildir_to_git : Store.t -> string -> file_tree -> unit
 let sync_maildir_to_git git_store maildir_path ft =
   let sync_path path =
     In_channel.create (maildir_path ^ "/" ^ path) |> fun input ->
@@ -164,7 +164,7 @@ let sync_maildir_to_git git_store maildir_path ft =
   List.iter to_sync ~f:sync_path
 
 (** Transfer items listed in file_tree to maildir store from git store, but choosing to delete depending on git history *)
-val sync_git_to_maildir : Store.t -> string -> file_tree -> ()
+val sync_git_to_maildir : Store.t -> string -> file_tree -> unit
 let sync_git_to_maildir git_store commit maildir_path ft =
   let sync_path path =
     let lwt_result_string = Git_ops.get_commit_tree git_store commit >>||
@@ -198,12 +198,12 @@ let fswatch_event_listen path f =
     let rec loop () =
       try f (); loop ()
       with End_of_file -> () in
-    loop ()
+    loop () in
   let command = "fswatch -r " ^ path ^ " --event Created --event Updated --event Removed" in
   let input = Unix.open_process_in command in
   act_on_event input;
   Unix.close_process_in input
 
-let run_daemon git_store maildir_path = ()
+let run_daemon git_store maildir_path =
   sync store dir;
   fswatch_event_listen maildir_path (fun () -> sync store dir)
