@@ -1,4 +1,5 @@
 open Core
+open Lwt.Infix
 open Gitmaildir.Lwt_result_helpers
 
 module Store = Git.Store.Make(Digestif.SHA1)(Git_unix.Fs)(Git.Inflate)(Git.Deflate)
@@ -100,9 +101,9 @@ let rec file_tree_of_git store commit =
   commit_tree_hash >>|| aux >>|| (fun x -> Dir ("", x))
 
 (** Reads a maildir in as a file_tree *)
-val file_tree_of_maildir : string -> string -> file_tree
-let rec file_tree_of_maildir root =
-  let rex aux path =
+val file_tree_of_maildir : string -> file_tree
+let file_tree_of_maildir root =
+  let rec aux path =
     let full_path = root ^ "/" ^ path in
     let dir_contents = Sys.readdir full_path |> Array.to_list in
     let dirs = List.filter dir_contents ~f:(fun f -> Sys.is_directory_exn (full_path ^ "/" ^ path ^ "/" ^ f)) in
@@ -173,18 +174,36 @@ let sync_git_to_maildir git_store commit maildir_path ft =
       (match Lwt_main.run lwt_result_string with
       | Ok s -> Out_channel.output_string s
       | Error _ -> ());
-      Out_channel.close file
+      Out_channel.close file in
   let paths = file_tree_to_paths ft in
   List.iter paths ~f:sync_path
 
-let sync store dir =
+(** Synchronises a git store and maildir (takes and holds the global lock) *)
+let sync git_store maildir_path =
   Lock.lock lock;
-  let (new_git, new_maildir, del_git, del_maildir) = diff_trees store dir in
-  List.fold new_maildir errors ~f:(add_to_gitmaildir_fold ~store)
-  List.fold new_git errors ~f:(add_to_maildir ~store)
+  let maildir_path = Fpath.to_string maildir_path in
+  let head_commit = Lwt_main.run @@ Git_ops.get_master_commit git_store in
+  let g_tree = Result.bind head_commit ~f:(file_tree_of_git git_store) in
+  let m_tree = Ok (file_tree_of_maildir maildir_path) in
+  let unique_g, unique_m = Result.bind g_tree ~f:(fun g_tree ->
+    Result.bind m_tree ~f:(fun m_tree ->
+      diff_trees g_tree m_tree)) in
+  let _ = Result.bind unique_m ~f:(sync_maildir_to_git git_store maildir_path) in
+  let _ = Result.bind unique_g ~f:(sync_git_to_maildir git_store head_commit maildir_path) in
   Lock.unlock lock
 
-let run_daemon store dir = ()
-  (* TODO run synchronisation *)
+(** Uses fswatch to listen on events on the given path and executes the function handed to it *)
+let fswatch_event_listen path f =
+  let act_on_event ic =
+    let rec loop () =
+      try f (); loop ()
+      with End_of_file -> () in
+    loop ()
+  let command = "fswatch -r " ^ path ^ " --event Created --event Updated --event Removed" in
+  let input = Unix.open_process_in command in
+  act_on_event input;
+  Unix.close_process_in input
+
+let run_daemon git_store maildir_path = ()
   sync store dir;
-  (* TODO then enter filesystem watching (see https://github.com/ocaml/dune/blob/master/src/scheduler.ml) *)
+  fswatch_event_listen maildir_path (fun () -> sync store dir)
