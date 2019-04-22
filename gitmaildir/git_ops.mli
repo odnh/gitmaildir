@@ -4,7 +4,13 @@ module type S = sig
   module Store : Git.Store.S
 
   (** The type of an error *)
-  type error
+  type error = [
+    | `Not_a_tree of Store.Hash.t
+    | `Not_a_commit of Store.Hash.t
+    | `Not_a_blob of Store.Hash.t
+    | `No_entry_in_tree of string * Store.Value.Tree.t
+    | `Invalid_path of Git.Path.t
+    | Store.error ]
 
   (** Pretty prints error type *)
   val pp_error : Format.formatter -> error -> unit
