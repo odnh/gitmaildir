@@ -6,7 +6,11 @@ module Git_ops = Gitmaildir.Git_ops.Make(Store)
 module Locking_unix = Gitmaildir_unix.Locking_unix
 module Maildir = Gitmaildir.Maildir.Make_granular(Git_ops)(Locking_unix)
 
-let run_daemon _ _ = ()
+let run_daemon store path =
+  let store = Lwt_main.run @@ Store.v () Fpath.(v store) in
+  let path = Fpath.v path in
+  let _ = Result.map store ~f:(fun s -> Main.run_daemon s path) in
+  ()
 
 let store_arg =
   let doc = "Path of the git store to sync" in

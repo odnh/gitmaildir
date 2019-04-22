@@ -2,4 +2,4 @@
  (name        gitmaildir_daemon)
  (public_name gitmaildir_daemon)
  (package     gitmaildir_daemon)
- (libraries core lwt cmdliner gitmaildir gitmaildir_unix))
+ (libraries core lwt git-unix cmdliner gitmaildir gitmaildir_unix))
