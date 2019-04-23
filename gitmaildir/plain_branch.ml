@@ -3,8 +3,71 @@ open Lwt.Infix
 open Lwt_result_helpers
 
 (** takes in an email string and returns it as just plaintext content *)
-let make_plain _ = "TEST PLAINTEXT"
-(* TODO: implement *)
+let make_plain data =
+  let module EE = Email_message.Email in
+  let html_to_plain html =
+    (* TODO: implement *)
+    "HTML TO PLAIN" ^ html ^ "HTML TO PLAIN"in
+  let rec textify email =
+    let parse_multi cont =
+      match EE.Content.parse cont with
+      | Ok parsed ->
+        (match parsed with
+        | EE.Content.Multipart m ->
+            List.map m.EE.Content.Multipart.parts ~f:textify |> String.concat
+        | EE.Content.Message m -> textify m
+        | EE.Content.Data _ -> "")
+      | Error _ -> "" in
+    let parse_multi_alt cont =
+      match EE.Content.parse cont with
+      | Ok parsed ->
+        (match parsed with
+        | EE.Content.Multipart m ->
+            List.hd_exn m.EE.Content.Multipart.parts |> textify
+        | EE.Content.Message m -> textify m
+        | EE.Content.Data _ -> "")
+      | Error _ -> "" in
+    let parse_text cont =
+      match EE.Content.parse cont with
+      | Ok parsed ->
+        (match parsed with
+        | EE.Content.Multipart _ -> ""
+        | EE.Content.Message m -> textify m
+        | EE.Content.Data d ->
+            (match Email_message.Octet_stream.decode d with
+            | Some s -> Email_message.Bigstring_shared.to_string s
+            | None -> ""))
+      | Error _ -> "" in
+    let parse_html cont = 
+      match EE.Content.parse cont with
+      | Ok parsed ->
+        (match parsed with
+        | EE.Content.Multipart _ -> ""
+        | EE.Content.Message m -> textify m
+        | EE.Content.Data d ->
+            (match Email_message.Octet_stream.decode d with
+            | Some s -> Email_message.Bigstring_shared.to_string s |> html_to_plain
+            | None -> ""))
+      | Error _ -> "" in
+    let content = EE.Simple.Content.of_email email in
+    let mimetype = EE.Simple.Content.content_type content in
+    match mimetype with
+    | "text/plain" -> parse_text email
+    | "text/html" -> parse_html email
+    | "multipart/mixed" -> parse_multi email
+    | "multipart/alternative" -> parse_multi_alt email
+    | "multipart/related" -> parse_multi email
+    | mt -> "<" ^ mt ^ " Attachment>" in
+  textify (EE.of_string data)
+
+(*
+Managing email:
+  1. Parse
+  2. Match  (ie multipart, data, content)
+  3. Multi -> Concat textify of parts
+     Data -> textify
+     Content -> textify
+*)
 
 module Make (G : Git_ops.S) = struct
   
