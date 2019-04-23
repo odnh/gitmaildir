@@ -20,9 +20,7 @@ sig
     and type error := G.error
 end
 
-module Make_unsafe (G : Git_ops.S) (M : Makeable) (P : Makeable) = struct
-
-  (* TODO: work out how to split the input channel (this is the only problem at the moment) *)
+module Make_unsafe (M : Makeable) (P : Makeable) (G : Git_ops.S) = struct
   (* NB: was only able to implement this using the not granular locking *)
 
   module Store = G.Store
@@ -64,10 +62,10 @@ module Make_unsafe (G : Git_ops.S) (M : Makeable) (P : Makeable) = struct
     P.init_gitmaildir store
 end
 
-module Make_locking (G : Git_ops.S) (M : Makeable) (P : Makeable) (L : Locking) = struct
+module Make_locking (M : Makeable) (P : Makeable) (L : Locking) (G : Git_ops.S) = struct
 
   module Store = G.Store
-  module Unsafe = Make_unsafe(G)(M)(P)
+  module Unsafe = Make_unsafe(M)(P)(G)
   module Lock = L
   open G
 
@@ -106,3 +104,13 @@ module Make_locking (G : Git_ops.S) (M : Makeable) (P : Makeable) (L : Locking) 
   let init_gitmaildir store =
     init_empty_blob store
 end
+
+let add_plugins maildir_base plugin_list locking =
+  let rec build acc = function
+    | [] -> acc
+    | x::[] -> (module Make_locking(val acc : Makeable)
+                                   (val x : Makeable)
+                                   (val locking : Locking) : Makeable)
+    | x::xs -> build (module Make_unsafe(val acc : Makeable)
+                                        (val x : Makeable) : Makeable) xs in
+  build maildir_base plugin_list

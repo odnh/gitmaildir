@@ -23,7 +23,7 @@ sig
 end
 
 (** Adds a plugin to an existing maildir module. NB: can stack these on top of eachother. *)
-module Make_unsafe (G : Git_ops.S) (M : Makeable) (P : Makeable) : sig
+module Make_unsafe (M : Makeable) (P : Makeable) (G : Git_ops.S) : sig
   include
     Maildir.S
     with module Store = G.Store
@@ -31,9 +31,12 @@ module Make_unsafe (G : Git_ops.S) (M : Makeable) (P : Makeable) : sig
 end
 
 (** Wrap a pluginned maildir to with non-granular locking *)
-module Make_locking (G : Git_ops.S) (M : Makeable) (P : Makeable) (L : Locking) : sig
+module Make_locking (M : Makeable) (P : Makeable) (L : Locking) (G : Git_ops.S) : sig
   include
     Maildir.S
     with module Store = G.Store
     and type error := G.error
 end
+
+(** Takes a maildir implementation and a list of plugins to be added on top of it *)
+val add_plugins : (module Makeable) -> (module Makeable) list -> (module Locking) -> (module Makeable)

@@ -4,8 +4,14 @@ open Lwt.Infix
 
 module Store = Git.Store.Make(Digestif.SHA1)(Git_unix.Fs)(Git.Inflate)(Git.Deflate)
 module Git_ops = Gitmaildir.Git_ops.Make(Store)
-module Locking_unix = Gitmaildir_unix.Locking_unix
-module Maildir = Gitmaildir.Maildir.Make_granular(Git_ops)(Locking_unix)
+
+(* Build the maildir module with plugins *)
+module type Makeable = Gitmaildir.Maildir_with_plugins.Makeable
+module type Locking = Gitmaildir.Maildir_with_plugins.Locking
+let base_maildir = (module Gitmaildir.Maildir.Make_unsafe : Makeable)
+let plugins = [(module Gitmaildir.Plain_branch.Make : Makeable)]
+let locking = (module Gitmaildir_unix.Locking_unix : Locking)
+module Maildir = (val (Gitmaildir.Maildir_with_plugins.add_plugins base_maildir plugins locking) : Makeable)(Git_ops)
 
 (* helper functions *)
 
