@@ -194,7 +194,8 @@ let sync_maildir_to_git git_store commit maildir_path ft =
   let to_sync = List.filter paths ~f:(fun elem1 -> not (List.exists to_delete ~f:(fun elem2 -> elem1 = elem2))) |>
     List.map ~f:(fun p -> maildir_path ^ "/" ^ p) in
   (* delete unneeded *)
-  List.iter to_delete ~f:delete_path;
+  (*List.iter to_delete ~f:delete_path; TODO: uncomment when working*)
+  let _ = delete_path in
   (* sync new emails *)
   List.iter to_sync ~f:sync_path
 
