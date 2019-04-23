@@ -27,7 +27,7 @@ module Make_unsafe (G : Git_ops.S) (M : Makeable) (P : Makeable) = struct
 
   module Store = G.Store
 
-  (* Here we make our modules with the same GIt_ops so that the types match NB: use non-locking *)
+  (* Here we make our modules with the same Git_ops so that the types match NB: use non-locking *)
   module M = M(G)
   module P = P(G)
 
@@ -64,8 +64,45 @@ module Make_unsafe (G : Git_ops.S) (M : Makeable) (P : Makeable) = struct
     P.init_gitmaildir store
 end
 
-(*
-module Make_locking (M : Maildir.S) (L : Locking) = struct
-  (* TODO: we wrap this at the end to make all operations safe *)
+module Make_locking (G : Git_ops.S) (M : Makeable) (P : Makeable) (L : Locking) = struct
+
+  module Store = G.Store
+  module Unsafe = Make_unsafe(G)(M)(P)
+  module Lock = L
+  open G
+
+  let get_lock store = Lock.v ((Fpath.to_string @@ Store.root store) ^ "/.global_lock")
+
+  let deliver_mail store input =
+    let lock = get_lock store in
+    Lwt.return_unit >|= (fun () ->
+    Lock.lock lock) >>= (fun () ->
+    Unsafe.deliver_mail store input) >|= (fun a ->
+    Lock.unlock lock; a)
+
+  let delete_mail store path =
+    let lock = get_lock store in
+    Lwt.return_unit >|= (fun () ->
+    Lock.lock lock) >>= (fun () ->
+    Unsafe.delete_mail store path) >|= (fun a ->
+    Lock.unlock lock; a)
+
+  let move_mail store path new_path =
+    let lock = get_lock store in
+    Lwt.return_unit >|= (fun () ->
+    Lock.lock lock) >>= (fun () ->
+    Unsafe.move_mail store path new_path) >|= (fun a ->
+    Lock.unlock lock; a)
+
+  let add_mail_time time store path input =
+    let lock = get_lock store in
+    Lwt.return_unit >|= (fun () ->
+    Lock.lock lock) >>= (fun () ->
+    Unsafe.add_mail_time time store path input) >|= (fun a ->
+    Lock.unlock lock; a)
+
+  let add_mail = add_mail_time (Unix.time ())
+
+  let init_gitmaildir store =
+    init_empty_blob store
 end
-*)
