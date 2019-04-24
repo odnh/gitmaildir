@@ -2,12 +2,13 @@ open Core
 open Lwt.Infix
 open Lwt_result_helpers
 
+(** Converts and html document to plain text *)
+let html_to_plain html =
+  html
+
 (** takes in an email string and returns it as just plaintext content *)
 let make_plain data =
   let module EE = Email_message.Email in
-  let html_to_plain html =
-    (* TODO: implement *)
-    "HTML TO PLAIN" ^ html ^ "HTML TO PLAIN"in
   let rec textify email =
     let parse_multi cont =
       match EE.Content.parse cont with
@@ -23,7 +24,12 @@ let make_plain data =
       | Ok parsed ->
         (match parsed with
         | EE.Content.Multipart m ->
-            List.hd_exn m.EE.Content.Multipart.parts |> textify
+            (* As they are alternatives, we look for text/plain, otherwise choose the first one *)
+            m.EE.Content.Multipart.parts
+            |> List.fold ~init:(List.hd_exn m.EE.Content.Multipart.parts) ~f:(fun acc part ->
+              let mimetype = EE.Simple.Content.of_email part |> EE.Simple.Content.content_type in
+              if mimetype = "text/plain" then part else acc)
+            |> textify
         | EE.Content.Message m -> textify m
         | EE.Content.Data _ -> "")
       | Error _ -> "" in
@@ -59,15 +65,6 @@ let make_plain data =
     | "multipart/related" -> parse_multi email
     | mt -> "<" ^ mt ^ " Attachment>" in
   textify (EE.of_string data)
-
-(*
-Managing email:
-  1. Parse
-  2. Match  (ie multipart, data, content)
-  3. Multi -> Concat textify of parts
-     Data -> textify
-     Content -> textify
-*)
 
 module Make (G : Git_ops.S) = struct
   
