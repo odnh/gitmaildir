@@ -3,8 +3,15 @@ open Lwt.Infix
 open Lwt_result_helpers
 
 (** Converts and html document to plain text *)
+(* NB: relies on external python script, "html2text" *)
 let html_to_plain html =
-  html
+  let ic, oc = Unix.open_process "html2text" in
+  Out_channel.output_string oc html;
+  Out_channel.flush oc;
+  Out_channel.close oc;
+  let plain = In_channel.input_all ic in
+  let _ = Unix.close_process (ic, oc) in
+  plain
 
 (** takes in an email string and returns it as just plaintext content *)
 let make_plain data =
@@ -57,14 +64,27 @@ let make_plain data =
       | Error _ -> "" in
     let content = EE.Simple.Content.of_email email in
     let mimetype = EE.Simple.Content.content_type content in
-    match mimetype with
+    (match mimetype with
     | "text/plain" -> parse_text email
     | "text/html" -> parse_html email
     | "multipart/mixed" -> parse_multi email
     | "multipart/alternative" -> parse_multi_alt email
     | "multipart/related" -> parse_multi email
-    | mt -> "<" ^ mt ^ " Attachment>" in
-  textify (EE.of_string data)
+    | mt -> "\n<" ^ mt ^ " Attachment>\n") in
+  let email = EE.of_string data in
+  let plain_data = textify email in
+  let encoded_data = Email_message.Octet_stream.encode ~encoding:`Base64 (Email_message.Bigstring_shared.of_string plain_data)
+                       |> Email_message.Octet_stream.encoded_contents in
+  let raw_content = EE.Raw_content.of_bigstring_shared encoded_data in
+  let headers = EE.headers email in
+  let headers = headers |> Email_message.Email_headers.set
+                     ~name:(Email_message.Email_headers.Name.of_string "Content-Type")
+                     ~value:(Email_message.Email_headers.Value.of_string "text/plain") in
+  let headers = headers |> Email_message.Email_headers.set
+                     ~name:(Email_message.Email_headers.Name.of_string "Content-Transfer-Encoding")
+                     ~value:(Email_message.Email_headers.Value.of_string "base64") in
+  EE.create ~headers:headers ~raw_content:raw_content
+  |> EE.to_string
 
 module Make (G : Git_ops.S) = struct
   

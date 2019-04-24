@@ -146,8 +146,6 @@ let add_t = Term.(const add $ store_arg $ add_path_arg)
 (* convert command *)
 
 let convert store path =
-  print_endline @@ "STORE: " ^ store;
-  print_endline @@ "PATH: " ^ path;
   let store = Lwt_main.run @@ store_of_string store in
   let path = Fpath.v path in
   let init_lwt = Maildir.init_gitmaildir store in
