@@ -1,6 +1,6 @@
 (executables
   (names     gitmaildir_tests)
-  (libraries alcotest git-unix gitmaildir gitmaildir_unix))
+  (libraries core fpath alcotest alcotest-lwt git-unix gitmaildir gitmaildir_unix))
 
 (alias
   (name runtest)
