@@ -12,13 +12,16 @@ There are three main parts:
 - `gitmaildir`: A library for interacting with the maildir
 - `gitmaildir-cli`: A command line tool to interact with the maildir
 - `gitmaildir-daemon`: A daemon process to allow standard maildir clients to interact with a git maildir
+- `gitmaildir-unix`: Extra modules to provide backedn implementations for running on unix systems (ie locking)
 
 ## Building
 
 ### Dependencies:
 
-- `core, lwt, cmdliner, git-unix`
-- Can be install using opam: `opam install core lwt cmdliner git-unix`
+- For gitmaildir library: `core, lwt, cmdliner, git`
+- To run on unix: `flock, git-unix`
+- To use plugins: `email_message, lambdasoup`
+- Can be installed using opam: `opam install core lwt cmdliner git-unix email_message lambdasoup flock`
 
 ### Build and run:
 
