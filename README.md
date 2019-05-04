@@ -18,9 +18,12 @@ There are three main parts:
 
 ### Dependencies:
 
+This requires you to already have a working opam installation. If you do not, then consult the [manual](https://opam.ocaml.org/doc/Install.html) for how to install it.
+At the time of writing you need to be using OCaml 4.06.1 so that it is old enough to use `email_message` and new enough to use the current verison of `dune`.
+
 - For gitmaildir library: `core, lwt, cmdliner, git`
 - To run on unix: `flock, git-unix`
-- To use plugins: `email_message, lambdasoup`
+- To use plugins: `email_message, lambdasoup`, the `plain_branch` plugin also requires the Python package `http2text`
 - Can be installed using opam: `opam install core lwt cmdliner git-unix email_message lambdasoup flock`
 
 ### Build and run:

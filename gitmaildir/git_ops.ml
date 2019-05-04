@@ -53,7 +53,7 @@ module type S = sig
 
   val init_empty_blob : Store.t -> (unit, error) Lwt_result.t
 
-  val read_blob : Store.t -> Store.Hash.t -> (string, error) Lwt_result.t 
+  val read_blob : Store.t -> Store.Hash.t -> (string, error) Lwt_result.t
 end
 
 module Make (Store : Git.Store.S) = struct
