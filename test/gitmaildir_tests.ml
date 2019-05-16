@@ -214,5 +214,6 @@ let () =
     "maildir", maildir_set;
 ]
 
-(* remove the testing directory *)
-(*let () = Sys.command_exn ("rm -rf " ^ tmp_dir)*)
+(* remove the testing directory and sample email *)
+let () = Sys.command_exn ("rm -rf " ^ tmp_dir)
+let () = Sys.command_exn ("rm -rf " ^ sample_email)

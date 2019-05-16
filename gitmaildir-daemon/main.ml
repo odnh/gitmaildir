@@ -177,12 +177,13 @@ let rm_recurse path =
 (** Transfer items listed in file tree to git store from maildir store *)
 let sync_maildir_to_git git_store commit maildir_path ft =
   let sync_leaf path =
-    In_channel.create path |> (fun ic ->
+    try In_channel.create path |> (fun ic ->
       let path_in_store = Fpath.(relativize ~root:(v maildir_path) (v path)) in
       let _ = match path_in_store with
               | Some p -> Lwt_main.run @@ Maildir.add_mail git_store p ic
               | None -> Ok () in
-      In_channel.close ic) in
+      In_channel.close ic)
+    with Sys_error _ -> () in
   let sync_path path =
       let leaf_paths = files_under_dir path in
       List.iter leaf_paths ~f:sync_leaf in
@@ -191,11 +192,13 @@ let sync_maildir_to_git git_store commit maildir_path ft =
   let paths = file_tree_to_paths ft in
   let to_delete = List.filter paths ~f:(path_exists_in_prev_commit git_store commit) |>
     List.map ~f:(fun p -> maildir_path ^ "/" ^ p) in
+  print_endline ">>TO_DELETE"; List.iter ~f:print_endline to_delete;
   let to_sync = List.filter paths ~f:(fun elem1 -> not (List.exists to_delete ~f:(fun elem2 -> elem1 = elem2))) |>
     List.map ~f:(fun p -> maildir_path ^ "/" ^ p) in
+  print_endline ">>TO_SYNC"; List.iter ~f:print_endline to_sync;
+  print_endline ">>PATHS"; List.iter ~f:print_endline paths;
   (* delete unneeded *)
-  (*List.iter to_delete ~f:delete_path; TODO: uncomment when working*)
-  let _ = delete_path in
+  List.iter to_delete ~f:delete_path;
   (* sync new emails *)
   List.iter to_sync ~f:sync_path
 
@@ -250,6 +253,8 @@ let sync git_store maildir_path =
   let unique_pair = Result.bind g_tree ~f:(fun g_tree ->
     Result.map m_tree ~f:(fun m_tree ->
       diff_trees g_tree m_tree)) in
+  print_endline "UNIQUE_PAIR PRINT OF FILE_TREES";
+  Result.iter unique_pair ~f:(fun (a,b) -> print_endline ">FILE_TREE A"; List.iter ~f:print_endline (a |> file_tree_to_paths); print_endline ">FILE_TREE B"; List.iter ~f:print_endline (b |> file_tree_to_paths));
   let _ = Result.bind head_commit ~f:(fun c ->
     Result.map unique_pair ~f:(fun (g, m) ->
       sync_maildir_to_git git_store c maildir_path m;
@@ -260,7 +265,7 @@ let sync git_store maildir_path =
 let fswatch_event_listen path f =
   let act_on_event ic =
     while true do
-      try let _ = In_channel.input_line_exn ic in f ()
+      try let _ = In_channel.input_line_exn ic in print_endline "ACTING ON EVENT"; f ()
       with End_of_file -> ()
     done in
   let command = "fswatch -r " ^ path ^ " --event Created --event Updated --event Removed" in
