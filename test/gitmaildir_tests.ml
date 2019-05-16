@@ -31,6 +31,13 @@ let run_git_command cmd =
   let _ = Unix.close_process_in ic in
   output
 
+(* Runs a git command and outputs returns its output *)
+let run_two_git_command cmd1 cmd2 =
+  let ic = Unix.open_process_in @@ "git --git-dir="^tmp_dir^"/.git "^cmd1^" git --git-dir="^tmp_dir^"/.git "^cmd2 in
+  let output = In_channel.input_all ic in
+  let _ = Unix.close_process_in ic in
+  output
+
 (* Create test data *)
 
 let sample_email = Filename.temp_file "gitmaildir_tests" "sample_email"
@@ -112,16 +119,32 @@ let deliver_mail () =
   | Error e -> print_err e
 
 let add_mail_time () =
-  run_lwt_check_err ~f:(Alcotest.(check unit) "unit" ()) @@ Maildir.add_mail_time (Unix.time ()) store Fpath.(v "new/mail1") (In_channel.create sample_email)
+  let result = Lwt_main.run @@ Maildir.add_mail_time (Unix.time ()) store Fpath.(v "new/mail1") (In_channel.create sample_email) in
+  let git_output = run_two_git_command "ls-tree HEAD | grep new | awk '{print $3}' | xargs" "ls-tree | grep mail1 | wc -l" in
+  match result with
+  | Ok () -> Alcotest.(check string) "mail1 delivered to new dir" "       1\n" git_output
+  | Error e -> print_err e
 
 let add_mail () =
-  run_lwt_check_err ~f:(Alcotest.(check unit) "unit" ()) @@ Maildir.add_mail store Fpath.(v "new/mail2") (In_channel.create sample_email)
+  let result = Lwt_main.run @@ Maildir.add_mail store Fpath.(v "new/mail2") (In_channel.create sample_email) in
+  let git_output = run_two_git_command "ls-tree HEAD | grep new | awk '{print $3}' | xargs" "ls-tree | grep mail2 | wc -l" in
+  match result with
+  | Ok () -> Alcotest.(check string) "blob created in new dir" "       1\n" git_output
+  | Error e -> print_err e
 
 let move_mail () =
-  run_lwt_check_err ~f:(Alcotest.(check unit) "unit" ()) @@ Maildir.move_mail store Fpath.(v "new/mail2") Fpath.(v "new/mail3")
+  let result = Lwt_main.run @@ Maildir.move_mail store Fpath.(v "new/mail2") Fpath.(v "new/mail3") in
+  let git_output = run_two_git_command "ls-tree HEAD | grep new | awk '{print $3}' | xargs" "ls-tree | grep mail3 | wc -l" in
+  match result with
+  | Ok () -> Alcotest.(check string) "blob created in new dir" "       1\n" git_output
+  | Error e -> print_err e
 
 let delete_mail () =
-  run_lwt_check_err ~f:(Alcotest.(check unit) "unit" ()) @@ Maildir.delete_mail store Fpath.(v "new/mail3")
+  let result = Lwt_main.run @@ Maildir.delete_mail store Fpath.(v "new/mail3") in
+  let git_output = run_two_git_command "ls-tree HEAD | grep new | awk '{print $3}' | xargs" "ls-tree | grep mail3 | wc -l" in
+  match result with
+  | Ok () -> Alcotest.(check string) "blob created in new dir" "       0\n" git_output
+  | Error e -> print_err e
 
 let maildir_set = [
   "init_gitmaildir", `Quick, init_gitmaildir;
