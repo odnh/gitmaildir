@@ -8,7 +8,7 @@ Maildir is a format for storing emails that uses the locking of filesystems so t
 
 ## Structure
 
-There are three main parts:
+There are four main parts:
 - `gitmaildir`: A library for interacting with the maildir
 - `gitmaildir-cli`: A command line tool to interact with the maildir
 - `gitmaildir-daemon`: A daemon process to allow standard maildir clients to interact with a git maildir
@@ -31,6 +31,7 @@ At the time of writing you need to be using OCaml 4.06.1 so that it is old enoug
 - Build: `dune build`
 - Install: `dune install <package>`
 - Run: `gitmaildir_cli <options>`
+- Run tests: `dune build @runtest`
 
 ## Evaluation
 
