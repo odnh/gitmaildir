@@ -31,3 +31,7 @@ At the time of writing you need to be using OCaml 4.06.1 so that it is old enoug
 - Build: `dune build`
 - Install: `dune install <package>`
 - Run: `gitmaildir_cli <options>`
+
+## Evaluation
+
+The folder `evaluation` contains the code used to evaluate the performance of gitmaildir in comparison to maildir and mbox. Descriptions of its contents are contained within.
